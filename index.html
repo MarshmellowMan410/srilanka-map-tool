@@ -13,74 +13,128 @@
   --sel: #38bdf8;
   --font-display: "Iskoola Pota", "Noto Serif Sinhala", Georgia, serif;
   --font-body: "Iskoola Pota", "Noto Sans Sinhala", "Segoe UI", system-ui, sans-serif;
-  --split-h: 640px;
+  --app-h: 760px;
 }
 * { box-sizing: border-box; }
-html { background: var(--bg); }
-body {
-  margin: 0; min-height: 100vh; padding: 14px; color: var(--ink);
-  font-family: var(--font-body);
-  background: radial-gradient(ellipse at top, #1a2028, var(--bg) 60%);
-}
+html { background: var(--bg); scrollbar-gutter: stable; }
+body { margin: 0; min-height: 100vh; color: var(--ink); font-family: var(--font-body); background: radial-gradient(ellipse at top, #1a2028, var(--bg) 60%) fixed; }
 button, input, select { font-family: inherit; }
-button:focus-visible, input:focus-visible, select:focus-visible, .switch input:focus-visible + .sw {
-  outline: 2px solid var(--brass-deep); outline-offset: 2px;
-}
-.wrap { max-width: 1500px; margin: 0 auto; }
+button:focus-visible, input:focus-visible, select:focus-visible, .switch input:focus-visible + .sw { outline: 2px solid var(--brass-deep); outline-offset: 2px; }
+#scaleHost { width: 100%; }
+.wrap { padding: 10px; animation: fadeIn .5s ease both; }
 
-/* ---------- header / toolbar / tabs ---------- */
-header.top { text-align: center; margin-bottom: 8px; }
-header.top h1 { font-family: var(--font-display); font-size: 1.5rem; margin: 0; color: var(--brass-deep); }
-header.top .sub { margin: 4px 0 0; font-size: .82rem; color: var(--muted); }
-.toolbar { display: flex; flex-wrap: wrap; gap: 8px 12px; justify-content: center; align-items: center; margin: 8px 0 10px; }
-.chip {
-  display: inline-flex; align-items: center; gap: 8px; background: var(--panel);
-  border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; font-size: .8rem; color: var(--ink);
+/* ===================== animations ===================== */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes slideRight { from { opacity: 0; transform: translateX(-14px); } to { opacity: 1; transform: none; } }
+@keyframes popIn { 0% { opacity: 0; transform: scale(.55); } 70% { opacity: 1; transform: scale(1.08); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes growX { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes drawLine { from { stroke-dashoffset: var(--len); } to { stroke-dashoffset: 0; } }
+@keyframes drawPoly { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
+@keyframes ringGrow { from { transform: scale(.2); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes pulseRing { 0% { transform: scale(.7); opacity: .95; } 100% { transform: scale(3); opacity: 0; } }
+@keyframes bump { 0% { transform: scale(1); } 35% { transform: scale(1.5); color: #fff; } 100% { transform: scale(1); } }
+@keyframes promptIn { from { opacity: 0; transform: translateY(8px) scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes selFlash { 0%, 100% { background: #38bdf826; } 40% { background: #38bdf86b; } }
+@keyframes hotGlow { 0%, 100% { box-shadow: 0 0 0 0 #e0ab4c00; } 50% { box-shadow: 0 0 12px 2px #e0ab4caa; } }
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
+@keyframes flashRed {
+  0% { box-shadow: 0 0 0 5px #ff3b5c, 0 0 48px 14px #ff3b5ccc; }
+  100% { box-shadow: 0 0 0 4px #ff3b5cbb, 0 0 0 0 #ff3b5c00; }
 }
-.chip.off { border-color: var(--brass); }
+@keyframes flashGreen {
+  0% { box-shadow: 0 0 0 5px #16d16a, 0 0 40px 10px #16d16acc; }
+  100% { box-shadow: 0 0 0 3px #16d16a77, 0 0 0 0 #16d16a00; }
+}
+@keyframes missShake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-6px); } 40% { transform: translateX(6px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(3px); } }
+@keyframes nudge { 0%, 100% { transform: scale(1); } 40% { transform: scale(1.12); box-shadow: 0 0 0 4px #e0ab4c88; } }
+
+/* svg overlay animations (only applied when a scene changes, never on resize) */
+.svg-pop { transform-box: fill-box; transform-origin: center; animation: popIn .42s cubic-bezier(.2, .9, .3, 1.2) both; animation-delay: var(--d, 0ms); }
+.arr-draw { stroke-dasharray: var(--len); animation: drawLine .45s ease-out both; animation-delay: var(--d, 0ms); }
+.svg-fade { animation: fadeIn .7s ease both; animation-delay: var(--d, 0ms); }
+.ring-grow { transform-box: fill-box; transform-origin: center; animation: ringGrow .5s cubic-bezier(.2, .9, .3, 1.2) both; }
+.pulse-ring { transform-box: fill-box; transform-origin: center; animation: pulseRing 1s ease-out 3 forwards; }
+.ripple-ring { transform-box: fill-box; transform-origin: center; animation: pulseRing .9s ease-out 2 forwards; animation-delay: var(--d, 0ms); }
+
+/* panels slide in when you switch tabs */
+.panel.active .col-quiz, .panel.active .col-map, .panel.active .col-list, .panel.active .an-stats, .panel.active .gen-setup {
+  animation: fadeUp .4s cubic-bezier(.2, .8, .3, 1) both;
+}
+.panel.active .col-map, .panel.active .an-stats { animation-delay: .06s; }
+.panel.active .col-list { animation-delay: .12s; }
+.side-menu { animation: fadeUp .45s cubic-bezier(.2, .8, .3, 1) both; }
+.page-title { animation: fadeIn .7s ease both; }
+
+/* ===================== page title + UI zoom ===================== */
+.page-title { text-align: center; position: relative; }
+.page-title h1 { font-family: var(--font-display); font-size: 1.5rem; margin: 0; color: var(--brass-deep); }
+.page-title .sub { margin: 4px 0 0; font-size: .82rem; color: var(--muted); }
+.ui-zoom { display: none; position: absolute; right: 0; top: 50%; transform: translateY(-50%); align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.ui-zoom button { background: transparent; border: 0; color: var(--brass); padding: 4px 9px; font-size: .74rem; cursor: pointer; transition: background .15s, color .15s; }
+.ui-zoom button:hover { background: #e0ab4c26; color: var(--brass-deep); }
+.ui-zoom #zLabel { color: var(--muted); border-left: 1px solid var(--line); border-right: 1px solid var(--line); min-width: 5.2em; }
+.wrap.is-desk .ui-zoom { display: inline-flex; }
+/* link to the world map project, sitting right beside the title */
+.title-line { display: flex; align-items: center; justify-content: center; gap: 8px 16px; flex-wrap: wrap; }
+.world-link { display: inline-block; white-space: nowrap; background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: .76rem; color: var(--sel); text-decoration: none; transition: background .2s, border-color .2s, transform .15s; }
+.world-link:hover { background: #38bdf81f; border-color: var(--sel); transform: translateY(-1px); }
+.world-link:active { transform: scale(.96); }
+#rngVol { width: 70px; accent-color: var(--brass); cursor: pointer; vertical-align: middle; }
+#rngVol:disabled { opacity: .4; cursor: not-allowed; }
+.wrap.is-desk #chipSound { justify-content: space-between; }
+.wrap.is-desk #rngVol { width: 96px; }
+
+/* ===================== menu: toggles + tabs ===================== */
+.side-menu { display: flex; flex-direction: column; gap: 10px; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px 12px; justify-content: center; align-items: center; }
+.chip { display: inline-flex; align-items: center; gap: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; font-size: .8rem; color: var(--ink); white-space: nowrap; transition: border-color .2s, background .2s; }
+.chip.off { border-color: var(--brass); background: #e0ab4c14; }
 .switch { position: relative; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
 .switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
-.sw { width: 34px; height: 19px; border-radius: 999px; background: #3a4450; position: relative; transition: background .15s; flex: none; }
-.sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 15px; height: 15px; border-radius: 50%; background: #cfd6dd; transition: transform .15s; }
+.sw { width: 34px; height: 19px; border-radius: 999px; background: #3a4450; position: relative; transition: background .25s; flex: none; }
+.sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 15px; height: 15px; border-radius: 50%; background: #cfd6dd; transition: transform .25s cubic-bezier(.3, 1.4, .5, 1), background .25s; }
 .switch input:checked + .sw { background: var(--hit-vivid-deep); }
 .switch input:checked + .sw::after { transform: translateX(15px); background: #fff; }
 .sw-state { font-size: .72rem; color: var(--muted); min-width: 3.4em; }
-.chip select { background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 2px 6px; font-size: .78rem; }
+.chip select { background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 2px 6px; font-size: .76rem; }
 .chip select:disabled { opacity: .45; }
 .seg { display: inline-flex; border: 1.5px solid var(--brass); border-radius: 999px; overflow: hidden; }
-.seg button { background: transparent; color: var(--brass); border: none; padding: 4px 12px; font-size: .78rem; cursor: pointer; }
+.seg button { background: transparent; color: var(--brass); border: none; padding: 3px 11px; font-size: .75rem; cursor: pointer; transition: background .2s, color .2s; }
 .seg button.on { background: var(--brass); color: #241a05; font-weight: 700; }
 
-.tabs { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 4px 0 12px; }
-.tab-btn {
-  background: transparent; color: var(--brass); border: 1.5px solid var(--brass); border-radius: 999px;
-  padding: 6px 14px; font-size: .84rem; cursor: pointer;
-}
-.tab-btn:hover { background: #e0ab4c22; }
-.tab-btn.active { background: var(--brass); color: #241a05; font-weight: 700; }
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.tab-btn { background: transparent; color: var(--brass); border: 1.5px solid var(--brass); border-radius: 999px; padding: 6px 14px; font-size: .84rem; cursor: pointer; transition: background .2s, color .2s, transform .15s, box-shadow .2s; }
+.tab-btn:hover { background: #e0ab4c22; transform: translateY(-1px); }
+.tab-btn:active { transform: scale(.96); }
+.tab-btn.active { background: var(--brass); color: #241a05; font-weight: 700; animation: popIn .35s cubic-bezier(.2, .9, .3, 1.3); box-shadow: 0 4px 14px #e0ab4c44; }
 .tab-btn.generator { border-color: var(--hit-vivid); color: var(--hit-vivid); }
-.tab-btn.generator.active { background: var(--hit-vivid-deep); color: #04180d; }
+.tab-btn.generator:hover { background: #16d16a1f; }
+.tab-btn.generator.active { background: var(--hit-vivid-deep); color: #04180d; box-shadow: 0 4px 14px #16d16a44; }
 .tab-btn.analytics { border-color: var(--sel); color: var(--sel); }
-.tab-btn.analytics.active { background: var(--sel); color: #04202e; }
+.tab-btn.analytics:hover { background: #38bdf81f; }
+.tab-btn.analytics.active { background: var(--sel); color: #04202e; box-shadow: 0 4px 14px #38bdf844; }
 
 .panel { display: none; }
-.panel.active { display: block; }
+.panel.active { display: contents; }
+#panelsRoot, .split, .gen-host { display: contents; }
 .empty-state { text-align: center; color: var(--muted); padding: 40px 10px; }
-
-/* ---------- layout: quiz | map | place list ---------- */
-.split { display: flex; flex-direction: column; gap: 14px; }
-.col-quiz { order: 1; min-width: 0; min-height: 0; }
-.col-map { order: 2; display: flex; min-width: 0; min-height: 0; }
-.split.summary .col-map, .split.two .col-map { order: 1; }
-.split.summary .col-quiz, .split.two .col-quiz { order: 2; }
-.col-list { order: 3; display: flex; height: 420px; min-height: 0; }
 .panel-box { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
 
-.map-shell {
-  flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; position: relative;
-  border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: #fdfcf9;
-  transition: box-shadow .2s, border-color .2s;
-}
+/* ===================== app layout (stacked by default; the desktop grid is switched on by .is-desk) ===================== */
+.app { display: flex; flex-direction: column; gap: 14px; }
+.page-title { order: 0; }
+.side-menu { order: 1; }
+.col-quiz { order: 2; min-width: 0; min-height: 0; }
+.gen-setup { order: 2; }
+.col-map { order: 3; display: flex; min-width: 0; min-height: 0; }
+.col-list { order: 4; display: flex; height: 420px; min-height: 0; }
+.an-stats { order: 4; }
+.split.summary .col-map, .app.an .col-map { order: 2; }
+.split.summary .col-quiz { order: 3; }
+.app.an .an-stats { order: 3; }
+
+.map-shell { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; position: relative; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: #fdfcf9; transition: box-shadow .25s, border-color .25s; }
 body.view-fit .map-shell { height: 64vh; }
 body:not(.view-fit) .map-shell { max-height: 78vh; }
 .map-frame { position: relative; flex: 1 1 auto; min-height: 0; overflow: auto; cursor: crosshair; line-height: 0; overscroll-behavior: contain; }
@@ -94,133 +148,197 @@ body:not(.view-fit) .map-shell { max-height: 78vh; }
 .map-shell.hit-state { border-color: var(--hit-vivid); box-shadow: 0 0 0 3px #16d16a77; }
 .map-shell.miss-state { border-color: var(--miss-vivid); box-shadow: 0 0 0 4px #ff3b5cbb; }
 .map-shell.flash { animation: flashRed .9s ease-out 1; }
-@keyframes flashRed {
-  0% { box-shadow: 0 0 0 5px #ff3b5c, 0 0 48px 14px #ff3b5ccc; }
-  100% { box-shadow: 0 0 0 4px #ff3b5cbb, 0 0 0 0 #ff3b5c00; }
-}
-.pulse-ring { transform-box: fill-box; transform-origin: center; animation: pulseRing 1s ease-out 3 forwards; }
-@keyframes pulseRing { 0% { transform: scale(.7); opacity: .95; } 100% { transform: scale(3); opacity: 0; } }
+.map-shell.flash-ok { animation: flashGreen .8s ease-out 1; }
 .lbl-text { font-family: var(--font-body); font-size: 12.5px; font-weight: 600; fill: #fff; }
 .lbl-text.big { font-size: 14px; }
 
-@media (min-width: 880px) {
-  .split { display: grid; grid-template-columns: 300px minmax(0, 1fr); grid-template-rows: minmax(0, var(--split-h)) auto; }
-  .col-quiz { grid-column: 1; grid-row: 1; overflow-y: auto; }
-  .col-map { grid-column: 2; grid-row: 1; }
-  .col-list { grid-column: 1 / -1; grid-row: 2; height: 360px; }
-  body.view-fit .map-shell, body:not(.view-fit) .map-shell { height: 100%; max-height: none; }
-}
-@media (min-width: 1100px) {
-  .split { grid-template-columns: 300px minmax(0, 1fr) 280px; grid-template-rows: minmax(0, var(--split-h)); }
-  .col-list { grid-column: 3; grid-row: 1; height: auto; }
-  .split.two { grid-template-columns: 400px minmax(0, 1fr); }
-}
+/* ---- desktop: [ menu + question | map | place list ], analytics: [ menu | analysis | map ] ---- */
+.wrap.is-desk .app { display: grid; grid-template-columns: 330px minmax(0, 1fr) 270px; grid-template-rows: 46px auto minmax(0, 1fr); column-gap: 14px; row-gap: 0; height: var(--app-h); }
+.wrap.is-desk .page-title { grid-column: 2; grid-row: 1; align-self: center; }
+.wrap.is-desk .page-title h1 { font-size: 1.25rem; }
+.wrap.is-desk .page-title .sub { font-size: .74rem; margin-top: 1px; }
+.wrap.is-desk .side-menu { grid-column: 1; grid-row: 1 / 3; align-self: start; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px; gap: 8px; }
+.wrap.is-desk .col-quiz { grid-column: 1; grid-row: 3; margin-top: 12px; display: flex; flex-direction: column; }
+.wrap.is-desk .col-map { grid-column: 2; grid-row: 2 / 4; }
+.wrap.is-desk .col-list { grid-column: 3; grid-row: 1 / 4; height: auto; }
+.wrap.is-desk .gen-setup { grid-column: 2 / 4; grid-row: 2 / 4; min-height: 0; }
+.wrap.is-desk .empty-state { grid-column: 2 / 4; grid-row: 2; }
+.wrap.is-desk .map-shell, .wrap.is-desk body.view-fit .map-shell { height: auto; max-height: none; }
+body.view-fit .wrap.is-desk .map-shell, body:not(.view-fit) .wrap.is-desk .map-shell { height: auto; max-height: none; }
+.wrap.is-desk .app.an { grid-template-columns: 330px 360px minmax(0, 1fr); }
+.wrap.is-desk .app.an .page-title { grid-column: 3; }
+.wrap.is-desk .app.an .an-stats { grid-column: 2; grid-row: 1 / 4; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.wrap.is-desk .app.an .col-map { grid-column: 3; grid-row: 2 / 4; }
 
-/* ---------- quiz panel ---------- */
+.wrap.is-desk .toolbar { flex-direction: column; align-items: stretch; flex-wrap: nowrap; justify-content: flex-start; gap: 5px; }
+.wrap.is-desk .chip { width: 100%; border-radius: 10px; padding: 4px 10px; font-size: .76rem; }
+.wrap.is-desk .chip.switch .sw-state { margin-left: auto; }
+.wrap.is-desk #chipTimed { justify-content: space-between; }
+.wrap.is-desk .seg { flex: 1; }
+.wrap.is-desk .seg button { flex: 1; }
+.wrap.is-desk .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; border-top: 1px solid var(--line); padding-top: 8px; }
+.wrap.is-desk .tab-btn { border-radius: 9px; padding: 5px 4px; font-size: .72rem; line-height: 1.25; min-height: 30px; display: flex; align-items: center; justify-content: center; text-align: center; }
+
+/* ---- phone ---- */
+.wrap.is-phone { padding: 8px; }
+.wrap.is-phone .page-title h1 { font-size: 1.2rem; }
+.wrap.is-phone .toolbar, .wrap.is-phone .tabs { flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; padding-bottom: 4px; scrollbar-width: none; }
+.wrap.is-phone .toolbar::-webkit-scrollbar, .wrap.is-phone .tabs::-webkit-scrollbar { display: none; }
+.wrap.is-phone .chip, .wrap.is-phone .tab-btn { flex: none; white-space: nowrap; }
+body.view-fit .wrap.is-phone .map-shell { height: 64vh; height: clamp(340px, calc(100dvh - 330px), 72vh); }
+
+/* ===================== quiz panel ===================== */
 .status-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
 .find-label { font-size: .72rem; color: var(--muted); }
 .pills { display: flex; gap: 6px; flex-wrap: wrap; }
-.score-pill { background: var(--panel-2); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; font-size: .78rem; }
-.score-pill b { color: var(--brass-deep); }
+.score-pill { background: var(--panel-2); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; font-size: .78rem; transition: border-color .3s; }
+.score-pill b { display: inline-block; color: var(--brass-deep); }
+.score-pill b.bump { animation: bump .45s ease-out; }
+.streak-pill.hot { border-color: var(--brass); animation: hotGlow 1.4s ease-in-out infinite; }
 .no-track-tag { font-size: .72rem; color: var(--brass-deep); border: 1px dashed var(--brass); border-radius: 8px; padding: 4px 8px; margin-bottom: 8px; text-align: center; }
 .timer { display: flex; align-items: center; gap: 8px; margin: 4px 0 10px; }
 .timer-bar { flex: 1; height: 8px; background: var(--panel-2); border-radius: 99px; overflow: hidden; }
-.timer-bar i { display: block; height: 100%; width: 100%; background: var(--hit-vivid); transition: width .15s linear; }
-.timer.low .timer-bar i { background: var(--miss-vivid); }
+.timer-bar i { display: block; height: 100%; width: 100%; background: var(--hit-vivid); transition: width .15s linear, background .3s; }
+.timer.low .timer-bar i { background: var(--miss-vivid); animation: blink .6s ease-in-out infinite; }
 .timer-num { font-size: .8rem; min-width: 2.6em; text-align: right; }
 .river-hint { font-size: .78rem; color: var(--brass-deep); background: #e0ab4c1a; border: 1px solid #e0ab4c55; border-radius: 8px; padding: 6px 8px; margin-bottom: 8px; text-align: center; }
 .prompt-block { text-align: center; margin: 6px 0 12px; }
 .pname { display: block; font-family: var(--font-display); font-size: 1.6rem; color: var(--ink); line-height: 1.35; }
-.cat-tag {
-  display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; background: transparent;
-  border: 1px solid #e0ab4c77; color: var(--brass); font-size: .74rem; padding: 3px 10px; border-radius: 999px; cursor: pointer;
-}
+.pname.swap { animation: promptIn .4s cubic-bezier(.2, .8, .3, 1) both; }
+.cat-tag { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; background: transparent; border: 1px solid #e0ab4c77; color: var(--brass); font-size: .74rem; padding: 3px 10px; border-radius: 999px; cursor: pointer; transition: background .2s, border-color .2s; }
 .cat-tag:hover, .cat-tag.on { background: #e0ab4c22; border-color: var(--brass); }
 .cat-tag .cat-act { color: var(--muted); font-size: .68rem; }
 
 .feedback { margin-top: 12px; font-size: .92rem; text-align: center; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 11px 10px; }
 .feedback:empty { display: none; }
-.feedback.locked-hint { color: var(--brass-deep); border-color: var(--brass); }
-.feedback.hit-text { background: #0c4a2b; border-color: var(--hit-vivid); color: #d6ffe8; font-weight: 700; box-shadow: 0 0 0 2px #16d16a55; }
-.feedback.miss-text {
-  background: #c4122f; border-color: #ff8aa0; color: #fff; font-weight: 700; font-size: 1rem;
-  box-shadow: 0 0 0 3px #ff3b5c66, 0 6px 22px #ff3b5c66; animation: missShake .45s ease-out 1;
-}
-@keyframes missShake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-6px); } 40% { transform: translateX(6px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(3px); } }
+.feedback.locked-hint { color: var(--brass-deep); border-color: var(--brass); animation: fadeUp .3s ease both; }
+.feedback.hit-text { background: #0c4a2b; border-color: var(--hit-vivid); color: #d6ffe8; font-weight: 700; box-shadow: 0 0 0 2px #16d16a55; animation: popIn .4s cubic-bezier(.2, .9, .3, 1.2) both; }
+.feedback.miss-text { background: #c4122f; border-color: #ff8aa0; color: #fff; font-weight: 700; font-size: 1rem; box-shadow: 0 0 0 3px #ff3b5c66, 0 6px 22px #ff3b5c66; animation: popIn .3s ease-out both, missShake .45s ease-out .25s; }
 .controls { margin-top: 12px; text-align: center; }
-.next-btn, .restart-btn, .mistakes-btn, .exit-btn, .gen-start-btn {
-  border: none; border-radius: 8px; padding: 10px 18px; font-size: .92rem; cursor: pointer; font-weight: 700;
-}
+.next-btn, .restart-btn, .mistakes-btn, .exit-btn, .gen-start-btn { border: none; border-radius: 8px; padding: 10px 18px; font-size: .92rem; cursor: pointer; font-weight: 700; transition: background .2s, transform .15s, box-shadow .2s; }
+.next-btn:hover, .restart-btn:hover, .mistakes-btn:hover, .gen-start-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 16px #0006; }
+.next-btn:active, .restart-btn:active, .mistakes-btn:active, .gen-start-btn:active { transform: scale(.97); }
 .next-btn, .restart-btn, .gen-start-btn { background: var(--brass); color: #241a05; }
-.next-btn:hover, .restart-btn:hover, .gen-start-btn:hover { background: var(--brass-deep); }
+.next-btn:hover, .restart-btn:hover, .gen-start-btn:hover:not(:disabled) { background: var(--brass-deep); }
+.next-btn:not([style*="none"]) { animation: fadeUp .3s ease both; }
 .next-btn.nudge { animation: nudge .5s ease-out 1; }
-@keyframes nudge { 0%, 100% { transform: scale(1); } 40% { transform: scale(1.12); box-shadow: 0 0 0 4px #e0ab4c88; } }
 .mistakes-btn { background: var(--miss-vivid-deep); color: #fff; }
 .mistakes-btn:hover { background: var(--miss-vivid); }
 .exit-btn { background: transparent; color: var(--muted); border: 1px solid var(--line); font-weight: 400; }
 .exit-btn:hover { color: var(--ink); border-color: var(--muted); }
 
-/* ---------- results (left column) ---------- */
-.r-state .msg { text-align: center; color: var(--muted); font-size: .9rem; }
-.r-state .big { text-align: center; font-family: var(--font-display); font-size: 2.3rem; color: var(--brass-deep); margin: 4px 0; }
-.r-meta { display: flex; justify-content: center; gap: 14px; flex-wrap: wrap; font-size: .8rem; color: var(--muted); margin-bottom: 10px; }
+.wrap.is-desk .quiz-box { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; padding: 12px 14px; }
+.wrap.is-desk .pname { font-size: 1.45rem; }
+.wrap.is-desk .prompt-block { margin: 2px 0 8px; }
+.wrap.is-desk .cat-tag { margin-top: 6px; }
+.wrap.is-desk .feedback { margin-top: 8px; padding: 8px; font-size: .86rem; }
+.wrap.is-desk .feedback.miss-text { font-size: .92rem; }
+.wrap.is-desk .controls { margin-top: 8px; }
+.wrap.is-desk .next-btn { padding: 7px 20px; }
+
+/* ---- results (left column) ---- */
+.r-state { animation: fadeUp .45s cubic-bezier(.2, .8, .3, 1) both; }
+.r-state .msg { text-align: center; color: var(--muted); font-size: .88rem; }
+.r-state .big { text-align: center; font-family: var(--font-display); font-size: 2.3rem; color: var(--brass-deep); margin: 2px 0; }
+.r-meta { display: flex; justify-content: center; gap: 14px; flex-wrap: wrap; font-size: .8rem; color: var(--muted); margin-bottom: 6px; }
 .r-meta b { color: var(--ink); }
-.r-note { font-size: .74rem; color: var(--muted); line-height: 1.6; text-align: center; margin: 4px 0 10px; }
-.review-list { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 5px; }
-.review-list li {
-  display: flex; justify-content: space-between; gap: 8px; align-items: center; font-size: .82rem;
-  padding: 7px 9px; border-radius: 7px; background: var(--panel-2); border-left: 4px solid var(--hit-vivid); cursor: pointer;
-}
-.review-list li:hover { filter: brightness(1.15); }
+.r-note { font-size: .72rem; color: var(--muted); line-height: 1.5; text-align: center; margin: 2px 0 8px; }
+.review-list { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 5px; align-content: start; }
+.review-list li { display: flex; justify-content: space-between; gap: 8px; align-items: center; font-size: .82rem; padding: 6px 9px; border-radius: 7px; background: var(--panel-2); border-left: 4px solid var(--hit-vivid); cursor: pointer; transition: filter .15s, transform .15s; animation: slideRight .35s ease both; animation-delay: calc(var(--i, 0) * 38ms); }
+.review-list li:hover { filter: brightness(1.2); transform: translateX(3px); }
 .review-list li.ok { color: var(--hit-vivid); }
 .review-list li.bad { color: #ffd5dc; background: #3a0a14; border-left-color: var(--miss-vivid); font-weight: 600; }
 .review-list li.bad .mark { color: var(--miss-vivid); font-weight: 800; }
 .rname { color: var(--ink); }
 .rcat { display: block; font-size: .68rem; color: var(--muted); font-weight: 400; }
-.r-actions { display: flex; flex-direction: column; gap: 8px; }
-.r-actions button { width: 100%; }
+.r-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.r-actions button { padding: 8px 8px; font-size: .82rem; }
+.r-actions .exit-btn { grid-column: 1 / -1; }
+.r-actions.single .restart-btn { grid-column: 1 / -1; }
+.wrap.is-desk .r-state { display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto; }
+.wrap.is-desk .r-state .big { font-size: 1.9rem; }
+.wrap.is-desk .review-list { flex: 1 1 auto; min-height: 70px; overflow-y: auto; overscroll-behavior: contain; padding-right: 2px; }
 
-/* ---------- place list ---------- */
+/* ===================== place list (right column) ===================== */
 .pl-box { padding: 0; display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
 .pl-head { padding: 12px 12px 10px; border-bottom: 1px solid var(--line); display: grid; gap: 8px; }
 .pl-title { font-family: var(--font-display); color: var(--brass-deep); font-size: 1rem; }
-.pl-search, .pl-filter { width: 100%; background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; font-size: .83rem; }
+.pl-search, .pl-filter { width: 100%; background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; font-size: .83rem; transition: border-color .2s; }
+.pl-search:focus, .pl-filter:focus { border-color: var(--brass); }
 .pl-legend { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: .68rem; color: var(--muted); }
 .pl-legend span { display: inline-flex; align-items: center; gap: 4px; }
-.pl-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 0 8px 12px; overscroll-behavior: contain; }
+.pl-scroll { position: relative; flex: 1; min-height: 0; overflow-y: auto; padding: 0 8px 12px; overscroll-behavior: contain; }
 .pl-grp-head { display: flex; align-items: center; gap: 4px; position: sticky; top: 0; z-index: 1; background: var(--panel); padding: 8px 0 4px; }
-.pl-caret { background: none; border: 0; color: var(--muted); cursor: pointer; width: 22px; padding: 2px; font-size: .85rem; transition: transform .15s; }
+.pl-caret { background: none; border: 0; color: var(--muted); cursor: pointer; width: 22px; padding: 2px; font-size: .85rem; transition: transform .2s; }
 .pl-grp.collapsed .pl-caret { transform: rotate(-90deg); }
 .pl-grp.collapsed .pl-items { display: none; }
-.pl-cat-btn { flex: 1; text-align: left; background: none; border: 1px solid transparent; color: var(--brass-deep); font-weight: 700; font-size: .82rem; padding: 4px 6px; border-radius: 6px; cursor: pointer; }
+.pl-grp:not(.collapsed) .pl-items { animation: fadeUp .25s ease both; }
+.pl-cat-btn { flex: 1; text-align: left; background: none; border: 1px solid transparent; color: var(--brass-deep); font-weight: 700; font-size: .82rem; padding: 4px 6px; border-radius: 6px; cursor: pointer; transition: background .2s, border-color .2s; }
 .pl-cat-btn .n { color: var(--muted); font-weight: 400; font-size: .7rem; margin-left: 4px; }
 .pl-cat-btn:hover { background: #e0ab4c1a; }
 .pl-cat-btn.on { background: #e0ab4c33; border-color: var(--brass); }
-.pl-item { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; background: none; border: 0; color: var(--ink); font-size: .84rem; padding: 6px 8px; border-radius: 6px; cursor: pointer; }
-.pl-item:hover { background: var(--panel-2); }
-.pl-item.sel { background: #38bdf826; outline: 1px solid var(--sel); }
+.pl-item { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; background: none; border: 0; color: var(--ink); font-size: .84rem; padding: 6px 8px; border-radius: 6px; cursor: pointer; transition: background .15s, transform .15s; }
+.pl-item:hover { background: var(--panel-2); transform: translateX(3px); }
+.pl-item.sel { background: #38bdf826; outline: 1px solid var(--sel); animation: selFlash .9s ease; }
 .pl-item .alt { display: block; font-size: .7rem; color: var(--muted); }
 .pl-item .pm { margin-left: auto; font-size: .7rem; color: var(--miss-vivid); font-weight: 800; }
 .pl-empty { color: var(--muted); font-size: .8rem; text-align: center; padding: 18px 0; }
-.dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; flex: none; transition: background .4s; }
 .lv-new { background: #7a8591; } .lv-learning { background: var(--brass); } .lv-weak { background: var(--miss-vivid); } .lv-mastered { background: var(--hit-vivid); }
 
-/* ---------- generator setup ---------- */
-.gen-setup { max-width: 560px; margin: 24px auto; text-align: center; }
-.gen-setup p { color: var(--muted); font-size: .9rem; line-height: 1.8; }
-.gen-setup input[type=number] { width: 70px; margin: 0 8px; background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 5px; text-align: center; font-size: .95rem; }
-.gen-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 16px; }
+/* ===================== question generator ===================== */
+.gen-setup { display: grid; grid-template-columns: minmax(260px, 340px) minmax(0, 1fr); gap: 14px; align-items: stretch; }
+.wrap.is-stack .gen-setup { grid-template-columns: 1fr; }
+.gen-opts { align-self: start; text-align: center; }
+.gen-title { font-family: var(--font-display); color: var(--brass-deep); font-size: 1.15rem; margin-bottom: 4px; }
+.gen-opts p { color: var(--muted); font-size: .82rem; line-height: 1.8; margin: 6px 0 10px; }
+.gen-count { margin: 8px 0; font-size: .88rem; }
+.gen-count input[type=number] { width: 66px; margin: 0 8px; background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 5px; text-align: center; font-size: .95rem; }
+.gen-sel-sum { font-size: .86rem; color: var(--muted); background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; margin: 8px 0; transition: border-color .3s; }
+.gen-sel-sum b { color: var(--brass-deep); font-size: 1.05rem; }
+.gen-sel-sum.zero { border-color: var(--miss-vivid); color: #ffd5dc; }
+.gen-btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 12px; }
 .gen-start-btn:disabled { opacity: .4; cursor: not-allowed; }
 .gen-start-btn.weak { background: transparent; color: var(--brass-deep); border: 2px solid var(--brass); }
 .gen-start-btn.weak:hover:not(:disabled) { background: #e0ab4c22; }
-.gen-note { font-size: .78rem; color: var(--muted); margin-top: 10px; min-height: 1.2em; }
+.gen-note { font-size: .76rem; color: var(--muted); margin-top: 10px; line-height: 1.6; min-height: 1.2em; }
+.gen-pick { display: flex; min-height: 0; }
+.wrap.is-stack .gen-pick { height: 460px; }
 
-/* ---------- analytics ---------- */
+.pk-box { padding: 0; display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
+.pk-head { padding: 12px 14px 10px; border-bottom: 1px solid var(--line); display: grid; gap: 8px; }
+.pk-title { font-family: var(--font-display); color: var(--brass-deep); font-size: 1rem; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.pk-count { font-family: var(--font-body); font-size: .8rem; background: var(--panel-2); border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; color: var(--ink); }
+.pk-hint { font-size: .72rem; color: var(--muted); line-height: 1.6; }
+.pk-search { width: 100%; background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; font-size: .83rem; }
+.pk-btns { display: flex; gap: 6px; }
+.pk-btns button { flex: 1; background: transparent; color: var(--brass); border: 1.5px solid var(--brass); border-radius: 8px; padding: 5px 6px; font-size: .76rem; cursor: pointer; transition: background .2s; }
+.pk-btns button:hover { background: #e0ab4c22; }
+.pk-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 4px 10px 12px; overscroll-behavior: contain; }
+.pk-gh { display: flex; align-items: center; gap: 4px; position: sticky; top: 0; z-index: 1; background: var(--panel); padding: 7px 0 3px; }
+.pk-caret { background: none; border: 0; color: var(--muted); cursor: pointer; width: 24px; padding: 2px; font-size: .9rem; transition: transform .2s; }
+.pk-grp.collapsed .pk-caret { transform: rotate(-90deg); }
+.pk-grp.collapsed .pk-items { display: none; }
+.pk-grp:not(.collapsed) .pk-items { animation: fadeUp .25s ease both; }
+.pk-gl { flex: 1; display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 5px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel-2); font-weight: 700; font-size: .84rem; color: var(--brass-deep); transition: border-color .2s, background .2s; }
+.pk-gl:hover { border-color: var(--brass); }
+.pk-gl .pk-name { flex: 1; }
+.pk-gn { font-weight: 400; font-size: .72rem; color: var(--muted); }
+.pk-box input[type=checkbox] { accent-color: var(--brass); width: 16px; height: 16px; flex: none; cursor: pointer; }
+.pk-items { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 2px 8px; padding: 4px 0 4px 28px; }
+.pk-item { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 6px; font-size: .82rem; cursor: pointer; transition: background .15s, transform .15s; }
+.pk-item:hover { background: var(--panel-2); transform: translateX(2px); }
+.pk-item.on { color: var(--ink); }
+.pk-item:not(.on) { color: var(--muted); }
+.pk-pn small { display: block; font-size: .68rem; color: var(--muted); }
+.pk-empty { color: var(--muted); font-size: .8rem; text-align: center; padding: 18px 0; }
+
+/* ===================== analytics ===================== */
 .an-box { padding: 14px; }
 .an-title { font-family: var(--font-display); color: var(--brass-deep); font-size: 1.1rem; margin-bottom: 8px; }
 .an-note { font-size: .78rem; border-radius: 8px; padding: 8px 10px; margin: 8px 0; background: var(--panel-2); border: 1px solid var(--line); color: var(--muted); line-height: 1.6; }
 .an-note.warn { border-color: var(--brass); color: var(--brass-deep); }
-.an-note.ok { border-color: var(--hit-vivid); color: var(--hit-vivid); }
+.an-note.ok { border-color: var(--hit-vivid); color: var(--hit-vivid); animation: popIn .35s ease both; }
 .an-focus { display: block; width: 100%; margin: 8px 0; background: #38bdf822; color: var(--sel); border: 1px solid var(--sel); border-radius: 8px; padding: 6px 10px; font-size: .78rem; cursor: pointer; }
 .an-tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 10px 0; }
 .tile { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px; text-align: center; }
@@ -231,23 +349,23 @@ body:not(.view-fit) .map-shell { max-height: 78vh; }
 .lv-row b { color: var(--ink); }
 .heat-legend { display: flex; align-items: center; gap: 8px; font-size: .7rem; color: var(--muted); margin: 6px 0 12px; }
 .heat-legend i { flex: 1; max-width: 120px; height: 8px; border-radius: 99px; background: linear-gradient(90deg, hsl(120, 85%, 45%), hsl(60, 85%, 45%), hsl(0, 85%, 45%)); }
-.act-btn { font-size: .82rem; border: 1.5px solid var(--brass); background: transparent; color: var(--brass); padding: 8px 12px; border-radius: 8px; cursor: pointer; }
-.act-btn:hover:not(:disabled) { background: #e0ab4c22; }
+.act-btn { font-size: .82rem; border: 1.5px solid var(--brass); background: transparent; color: var(--brass); padding: 8px 12px; border-radius: 8px; cursor: pointer; transition: background .2s, transform .15s; }
+.act-btn:hover:not(:disabled) { background: #e0ab4c22; transform: translateY(-1px); }
 .act-btn.primary { background: var(--brass); color: #241a05; font-weight: 700; width: 100%; }
 .act-btn.primary:hover:not(:disabled) { background: var(--brass-deep); }
 .act-btn:disabled { opacity: .4; cursor: not-allowed; }
 .act-btn.danger { border-color: var(--miss-vivid); color: var(--miss-vivid); }
-.act-btn.danger.armed { background: var(--miss-vivid-deep); color: #fff; }
+.act-btn.danger.armed { background: var(--miss-vivid-deep); color: #fff; animation: nudge .4s ease-out; }
 .an-sec { margin-top: 18px; }
 .an-sec h3 { font-size: .88rem; color: var(--ink); margin: 0 0 8px; padding-bottom: 5px; border-bottom: 1px solid var(--line); }
 .an-muted { font-size: .78rem; color: var(--muted); line-height: 1.7; }
-.bar-row, .wk-row, .cf-row { display: grid; align-items: center; gap: 8px; width: 100%; text-align: left; background: none; border: 1px solid transparent; color: var(--ink); border-radius: 8px; padding: 6px; font-size: .82rem; cursor: pointer; }
+.bar-row, .wk-row, .cf-row { display: grid; align-items: center; gap: 8px; width: 100%; text-align: left; background: none; border: 1px solid transparent; color: var(--ink); border-radius: 8px; padding: 6px; font-size: .82rem; cursor: pointer; transition: background .15s, border-color .15s; }
 .bar-row:hover, .wk-row:hover, .cf-row:hover { background: var(--panel-2); }
 .bar-row.on { border-color: var(--sel); background: #38bdf81a; }
 .bar-row { grid-template-columns: minmax(0, 1fr) 70px 56px; }
 .bt { height: 10px; border-radius: 99px; background: #8a1730; overflow: hidden; }
 .bt.none { background: var(--panel-2); }
-.bt i { display: block; height: 100%; background: var(--hit-vivid); }
+.bt i { display: block; height: 100%; background: var(--hit-vivid); transform-origin: left center; }
 .bp { text-align: right; font-weight: 700; }
 .bp small, .wp small, .wn small { display: block; font-weight: 400; color: var(--muted); font-size: .68rem; }
 .wk-row { grid-template-columns: 14px minmax(0, 1fr) auto; }
@@ -258,72 +376,87 @@ body:not(.view-fit) .map-shell { max-height: 78vh; }
 .chart .gridl { stroke: #303945; stroke-width: 1; }
 .chart .ax { fill: #98a2ad; font-size: 10px; }
 .data-tools { display: flex; flex-wrap: wrap; gap: 8px; }
+/* analytics entrance (only while the tab is being opened) */
+.an-box.anim .tile { animation: fadeUp .45s ease both; animation-delay: calc(var(--i, 0) * 70ms); }
+.an-box.anim .bt i { animation: growX .9s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--i, 0) * 60ms + 150ms); }
+.an-box.anim .bar-row, .an-box.anim .wk-row, .an-box.anim .cf-row { animation: slideRight .4s ease both; animation-delay: calc(var(--i, 0) * 45ms); }
+.an-box.anim .chart-line { stroke-dasharray: 100; animation: drawPoly 1.1s ease-out both; animation-delay: .3s; }
+.an-box.anim .chart circle { transform-box: fill-box; transform-origin: center; animation: popIn .4s ease both; animation-delay: calc(var(--i, 0) * 60ms + 700ms); }
 
-/* ---------- reference + footer (unchanged) ---------- */
+/* ===================== reference + footer ===================== */
 .ref-block { margin-top: 18px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; }
 .ref-block summary { cursor: pointer; color: var(--brass-deep); font-weight: 700; }
 .ref-cat { margin-top: 12px; }
 .ref-cat h3 { margin: 0 0 6px; font-size: .9rem; color: var(--hit-vivid); }
+.ref-cat h3 .pending { color: var(--miss-vivid); font-size: .72rem; font-weight: 400; }
 .ref-cat ul { margin: 0; padding-left: 18px; font-size: .84rem; line-height: 1.8; color: var(--ink); }
-.ref-cat .meta { color: var(--muted); font-size: .76rem; }
+.ref-cat ul li span.alt { color: var(--muted); font-size: .78rem; }
 .credit { text-align: center; color: var(--muted); font-size: .72rem; margin: 18px 0 6px; }
 
-@media (max-width: 640px) {
-  body { padding: 10px; }
-  header.top h1 { font-size: 1.2rem; }
-  .toolbar, .tabs { flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; padding-bottom: 4px; scrollbar-width: none; }
-  .toolbar::-webkit-scrollbar, .tabs::-webkit-scrollbar { display: none; }
-  .chip, .tab-btn { flex: none; white-space: nowrap; }
-  body.view-fit .map-shell { height: 64vh; height: clamp(340px, calc(100dvh - 330px), 72vh); }
-}
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation: none !important; transition: none !important; }
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
-.ref-cat h3 .pending { color: var(--miss-vivid); font-size: .72rem; font-weight: 400; }
-.ref-cat ul li span.alt { color: var(--muted); font-size: .78rem; }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="topbar" id="topbar">
-    <header class="top">
-      <h1>ශ්‍රී ලංකා සිතියම් අභ්‍යාසය</h1>
-      <p class="sub" id="subLine">සිතියම මත ස්ථානය ක්ලික් කරන්න</p>
+<div id="scaleHost">
+<div class="wrap" id="wrap">
+  <div class="app" id="app">
+    <header class="page-title">
+      <div class="title-line">
+        <div class="title-text">
+          <h1>ශ්‍රී ලංකා සිතියම් අභ්‍යාසය</h1>
+          <p class="sub" id="subLine">සිතියම මත ස්ථානය ක්ලික් කරන්න</p>
+        </div>
+        <a class="world-link" href="world_map.html" title="ලෝක සිතියම් ව්‍යාපෘතිය (world_map.html) විවෘත කරන්න">ලෝක සිතියම →</a>
+      </div>
+      <div class="ui-zoom" id="uiZoom" title="තිරයට අනුව අතුරු මුහුණතේ විශාලත්වය ස්වයංක්‍රීයව වෙනස් වේ. A− / A+ මගින් ඔබටම වෙනස් කළ හැක; මැද බොත්තම ඔබා නැවත ස්වයංක්‍රීය කරන්න.">
+        <button type="button" data-z="-" aria-label="කුඩා කරන්න">A−</button>
+        <button type="button" data-z="auto" id="zLabel">ස්වයං</button>
+        <button type="button" data-z="+" aria-label="විශාල කරන්න">A+</button>
+      </div>
     </header>
 
-    <div class="toolbar" id="toolbar">
-      <label class="chip switch" id="chipTrack" title="සක්‍රීය විට ඔබේ පිළිතුරු සටහන් වී විශ්ලේෂණයට එකතු වේ. පරීක්ෂා කිරීමට අක්‍රීය කරන්න.">
-        <input type="checkbox" id="swTrack"><span class="sw"></span>
-        <span>දත්ත සටහන් කිරීම</span><span class="sw-state" id="stTrack"></span>
-      </label>
-      <div class="chip" id="chipTimed">
-        <label class="switch" title="සෑම ප්‍රශ්නයකටම කාල සීමාවක් දමන්න">
-          <input type="checkbox" id="swTimed"><span class="sw"></span><span>කාල සීමාව</span>
+    <div class="side-menu" id="sideMenu">
+      <div class="toolbar" id="toolbar">
+        <label class="chip switch" id="chipTrack" title="සක්‍රීය විට ඔබේ පිළිතුරු සටහන් වී විශ්ලේෂණයට එකතු වේ. පරීක්ෂා කිරීමට අක්‍රීය කරන්න.">
+          <input type="checkbox" id="swTrack"><span class="sw"></span>
+          <span>දත්ත සටහන් කිරීම</span><span class="sw-state" id="stTrack"></span>
         </label>
-        <select id="selSecs" aria-label="තත්පර ගණන">
-          <option value="10">තත්පර 10</option>
-          <option value="15">තත්පර 15</option>
-          <option value="20">තත්පර 20</option>
-          <option value="30">තත්පර 30</option>
-        </select>
-      </div>
-      <div class="chip">
-        <span>සිතියම:</span>
-        <div class="seg" id="segView" role="group" aria-label="සිතියම් දසුන">
-          <button type="button" data-view="scroll" title="සිතියම ලොකුවට පෙන්වා අනුචලනය කරන්න">අනුචලනය</button>
-          <button type="button" data-view="fit" title="සම්පූර්ණ සිතියම තිරයට ගැලපෙන ලෙස පෙන්වන්න">තිරයට ගැලපෙන</button>
+        <div class="chip" id="chipTimed">
+          <label class="switch" title="සෑම ප්‍රශ්නයකටම කාල සීමාවක් දමන්න">
+            <input type="checkbox" id="swTimed"><span class="sw"></span><span>කාල සීමාව</span>
+          </label>
+          <select id="selSecs" aria-label="තත්පර ගණන">
+            <option value="10">තත්පර 10</option>
+            <option value="15">තත්පර 15</option>
+            <option value="20">තත්පර 20</option>
+            <option value="30">තත්පර 30</option>
+          </select>
+        </div>
+        <div class="chip">
+          <span>සිතියම:</span>
+          <div class="seg" id="segView" role="group" aria-label="සිතියම් දසුන">
+            <button type="button" data-view="scroll" title="සිතියම ලොකුවට පෙන්වා අනුචලනය කරන්න">අනුචලනය</button>
+            <button type="button" data-view="fit" title="සම්පූර්ණ සිතියම තිරයට ගැලපෙන ලෙස පෙන්වන්න">තිරයට ගැලපෙන</button>
+          </div>
+        </div>
+        <label class="chip switch" title="සමාලෝචනයේදී සිතියමේ ස්ථාන නම් පෙන්වන්න / සඟවන්න">
+          <input type="checkbox" id="swNames"><span class="sw"></span><span>සිතියමේ නම්</span>
+        </label>
+        <div class="chip" id="chipSound">
+          <label class="switch" title="පිළිතුරු, ඊළඟ ප්‍රශ්නය, ප්‍රතිඵල ආදියට ශබ්ද ඇසෙන්නට සලස්වන්න">
+            <input type="checkbox" id="swSound"><span class="sw"></span><span>ශබ්ද</span>
+          </label>
+          <input type="range" id="rngVol" min="0" max="100" step="5" aria-label="ශබ්ද මට්ටම" title="ශබ්ද මට්ටම">
         </div>
       </div>
-      <label class="chip switch" title="සමාලෝචනයේදී සිතියමේ ස්ථාන නම් පෙන්වන්න / සඟවන්න">
-        <input type="checkbox" id="swNames"><span class="sw"></span><span>සිතියමේ නම්</span>
-      </label>
+      <div class="tabs" id="tabsRow"></div>
     </div>
 
-    <div class="tabs" id="tabsRow"></div>
+    <div id="emptyState" class="empty-state" style="display:none;"></div>
+    <div id="panelsRoot"></div>
   </div>
-
-  <div id="emptyState" class="empty-state" style="display:none;"></div>
-  <div id="panelsRoot"></div>
 
   <details class="ref-block">
     <summary>සියලුම ස්ථාන ලැයිස්තුව (Reference)</summary>
@@ -331,6 +464,7 @@ body:not(.view-fit) .map-shell { max-height: 78vh; }
   </details>
 
   <footer class="credit">Sh &middot; local practice tool &middot; no data leaves this page</footer>
+</div>
 </div>
 
 <template id="quiz-template">
@@ -342,7 +476,7 @@ body:not(.view-fit) .map-shell { max-height: 78vh; }
             <span class="find-label">ලකුණු කරන්න</span>
             <div class="pills">
               <div class="score-pill">ලකුණු: <b class="score-val">0</b> / <span class="total-val">0</span></div>
-              <div class="score-pill" title="අඛණ්ඩව නිවැරදි පිළිතුරු">අඛණ්ඩ: <b class="streak-val">0</b></div>
+              <div class="score-pill streak-pill" title="අඛණ්ඩව නිවැරදි පිළිතුරු">අඛණ්ඩ: <b class="streak-val">0</b></div>
             </div>
           </div>
           <div class="no-track-tag" style="display:none;">පරීක්ෂණ මාදිලිය — දත්ත සටහන් නොවේ</div>
@@ -464,10 +598,12 @@ function lsSet(k, v) {
 
 const Settings = {
   d: (() => {
-    const s = Object.assign({ track: true, view: 'scroll', timed: false, secs: 15, names: true }, lsGet(LS_SET, {}) || {});
+    const s = Object.assign({ track: true, view: 'scroll', timed: false, secs: 15, names: true, zoom: 'auto', sound: true, vol: 60 }, lsGet(LS_SET, {}) || {});
     if (s.view !== 'fit') s.view = 'scroll';
     if ([10, 15, 20, 30].indexOf(Number(s.secs)) < 0) s.secs = 15;
     s.secs = Number(s.secs); s.track = !!s.track; s.timed = !!s.timed; s.names = !!s.names;
+    s.sound = !!s.sound; s.vol = Number(s.vol); if (!(s.vol >= 0 && s.vol <= 100)) s.vol = 60;
+    if (s.zoom !== 'auto') { s.zoom = Number(s.zoom); if (!(s.zoom >= 50 && s.zoom <= 200)) s.zoom = 'auto'; }
     return s;
   })(),
   get(k) { return this.d[k]; },
@@ -566,13 +702,117 @@ const Tracker = {
   }
 };
 
+
+/* ===================== sound effects (synthesised with the Web Audio API, so no audio files are needed) ===================== */
+const Sound = (() => {
+  let ctx = null, master = null;
+  // creates / resumes the audio context lazily (browsers only allow it after a click or key press)
+  function ready() {
+    if (!Settings.get('sound') || document.hidden) return false;
+    const vol = Number(Settings.get('vol'));
+    if (!(vol > 0)) return false;
+    if (!ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return false;
+      try {
+        ctx = new AC();
+        master = ctx.createGain();
+        const comp = ctx.createDynamicsCompressor();
+        master.connect(comp); comp.connect(ctx.destination);
+      } catch (e) { ctx = null; return false; }
+    }
+    if (ctx.state === 'suspended') { try { ctx.resume(); } catch (e) { /* ignore */ } }
+    master.gain.value = Math.pow(vol / 100, 1.6);
+    return true;
+  }
+  // one synthesised note: o = { type, gain, attack, slideTo, lp }
+  function tone(freq, t0, dur, o) {
+    o = o || {};
+    const t = ctx.currentTime + t0;
+    const osc = ctx.createOscillator(), g = ctx.createGain();
+    osc.type = o.type || 'sine';
+    osc.frequency.setValueAtTime(freq, t);
+    if (o.slideTo) osc.frequency.exponentialRampToValueAtTime(o.slideTo, t + dur);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(o.gain || 0.25, t + (o.attack || 0.006));
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    let out = osc;
+    if (o.lp) { const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = o.lp; osc.connect(f); out = f; }
+    out.connect(g); g.connect(master);
+    osc.start(t); osc.stop(t + dur + 0.05);
+  }
+  const SCALE = [523.25, 587.33, 659.25, 783.99, 880, 1046.5];   // C major pentatonic: a streak climbs the scale
+  const play = fn => () => { if (ready()) fn(); };
+  return {
+    unlock: () => { ready(); },
+    correct(streak) {
+      if (!ready()) return;
+      const f = SCALE[Math.min(Math.max(streak, 1) - 1, SCALE.length - 1)];
+      tone(f, 0, .2, { type: 'triangle', gain: .28 });
+      tone(f * 1.5, .09, .3, { gain: .2 });
+      tone(f * 2, .17, .26, { gain: .09 });
+    },
+    streak(n) {                                              // little arpeggio on streak milestones
+      if (!ready()) return;
+      [523.25, 659.25, 783.99, 1046.5, 1318.5].slice(0, n >= 10 ? 5 : n >= 5 ? 4 : 3).forEach((f, i) => tone(f, .24 + i * .075, .22, { type: 'triangle', gain: .17 }));
+    },
+    wrong: play(() => {
+      tone(190, 0, .3, { type: 'sawtooth', gain: .2, lp: 900, slideTo: 120 });
+      tone(150, .13, .34, { type: 'square', gain: .12, lp: 700, slideTo: 90 });
+    }),
+    timeout: play(() => {
+      tone(320, 0, .11, { type: 'square', gain: .13, lp: 1000 });
+      tone(320, .16, .11, { type: 'square', gain: .13, lp: 1000 });
+      tone(230, .32, .3, { type: 'sawtooth', gain: .17, lp: 800, slideTo: 130 });
+    }),
+    tick(urgent) {                                          // last seconds of a timed question
+      if (!ready()) return;
+      tone(urgent ? 1500 : 1050, 0, .05, { type: 'square', gain: urgent ? .11 : .07, lp: 3200 });
+    },
+    next: play(() => tone(440, 0, .07, { gain: .12, slideTo: 590 })),
+    select: play(() => tone(780, 0, .05, { type: 'triangle', gain: .12 })),
+    tab: play(() => { tone(620, 0, .045, { type: 'triangle', gain: .1 }); tone(830, .04, .06, { type: 'triangle', gain: .1 }); }),
+    toggle(on) { if (ready()) tone(on ? 700 : 470, 0, .08, { gain: .14, slideTo: on ? 940 : 360 }); },
+    start: play(() => { tone(392, 0, .1, { type: 'triangle', gain: .17 }); tone(523.25, .08, .1, { type: 'triangle', gain: .17 }); tone(659.25, .16, .2, { type: 'triangle', gain: .17 }); }),
+    warn: play(() => tone(360, 0, .14, { type: 'square', gain: .09, lp: 1200 })),
+    ok: play(() => { tone(660, 0, .09, { gain: .15 }); tone(990, .08, .16, { gain: .15 }); }),
+    down: play(() => { tone(420, 0, .12, { type: 'triangle', gain: .15, slideTo: 300 }); tone(300, .1, .2, { type: 'triangle', gain: .13, slideTo: 200 }); }),
+    finish(pct) {
+      if (!ready()) return;
+      if (pct >= 80) {                                     // fanfare
+        [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => tone(f, i * .11, .22, { type: 'triangle', gain: .22 }));
+        tone(1046.5, .46, .7, { gain: .2 }); tone(1318.5, .5, .65, { gain: .12 });
+        if (pct === 100) [1568, 2093, 2637].forEach((f, i) => tone(f, .7 + i * .09, .25, { gain: .08 }));
+      } else if (pct >= 50) {
+        [523.25, 659.25, 783.99].forEach((f, i) => tone(f, i * .13, .26, { type: 'triangle', gain: .2 }));
+      } else {
+        [392, 329.63, 261.63].forEach((f, i) => tone(f, i * .18, .34, { type: 'triangle', gain: .18 }));
+      }
+    }
+  };
+})();
+
+/* ===================== which places the generator may ask ===================== */
+const LS_PICK = 'slq_genpick_v1';
+const GenPick = {
+  off: (() => { const o = lsGet(LS_PICK, null); return new Set(o && Array.isArray(o.off) ? o.off.filter(k => BY_KEY[k]) : []); })(),
+  has(k) { return !this.off.has(k); },
+  count() { let n = 0; for (const o of ALL) if (!this.off.has(o.key)) n++; return n; },
+  set(keys, on) { keys.forEach(k => { if (on) this.off.delete(k); else this.off.add(k); }); this.save(); },
+  save() { lsSet(LS_PICK, { off: Array.from(this.off) }); Bus.emit('genpick'); }
+};
+
 /* ===================== question generators ===================== */
 function sessionFromCategory(cat) { return shuffle(POOL_BY_CAT[cat.id]); }
 
 // weighted-by-history category picks, with cross-category "too close = same place" dedup
 function generateSession(n) {
-  const available = CATEGORIES.filter(catHasData);
-  const totalWeight = available.reduce((s, c) => s + c.weight, 0);
+  const pools = {};
+  CATEGORIES.forEach(c => { pools[c.id] = POOL_BY_CAT[c.id].filter(o => GenPick.has(o.key)); });
+  const available = CATEGORIES.filter(c => pools[c.id].length);
+  if (!available.length) return [];
+  n = Math.min(n, available.reduce((t, c) => t + pools[c.id].length, 0));
+  const totalWeight = available.reduce((t, c) => t + c.weight, 0);
   const usedByCategory = {}, picks = [], pickedPoints = [];
   let guard = 0;
   const maxGuard = n * 150 + 400;
@@ -581,8 +821,7 @@ function generateSession(n) {
     let r = Math.random() * totalWeight, chosen = null;
     for (const c of available) { r -= c.weight; if (r <= 0) { chosen = c; break; } }
     if (!chosen) chosen = available[available.length - 1];
-    const pool = POOL_BY_CAT[chosen.id];
-    if (!pool.length) continue;
+    const pool = pools[chosen.id];
     const usedSet = usedByCategory[chosen.id] || (usedByCategory[chosen.id] = new Set());
     if (usedSet.size >= pool.length) continue;
     let item, tries = 0;
@@ -600,7 +839,7 @@ function generateSession(n) {
 // practice session that favours the places the user keeps getting wrong (needs tracked data)
 function weakSession(n) {
   const st = Stats.get();
-  const pool = ALL.map(it => {
+  const pool = ALL.filter(it => GenPick.has(it.key)).map(it => {
     const s = st.byKey[it.key];
     let w;
     if (!s) w = 0.3;                        // never asked: small chance, keeps some variety
@@ -636,7 +875,8 @@ function rectsHit(r, list, pad) {
 function inRect(x, y, r, pad) { return x > r.x - pad && x < r.x + r.w + pad && y > r.y - pad && y < r.y + r.h + pad; }
 
 // items: [{x, y (px), text, color, big, noText, fill}]  -- every item gets a dot; labelled ones also get a text box + arrow
-function drawLabels(svg, W, H, items, extra) {
+// anim=true plays the pop-in / arrow-draw animation (only used when the scene changes, never on a resize)
+function drawLabels(svg, W, H, items, extra, anim) {
   const gm = svgEl('g', { opacity: 0 }, svg);
   items.forEach(it => {
     if (it.noText) return;
@@ -681,13 +921,20 @@ function drawLabels(svg, W, H, items, extra) {
     placed.push(best); obst.push(best.r); it.pos = best;
   });
 
+  // animation helper: adds the class + a per-element delay (+ the line length for the arrow-draw effect)
+  const an = (attrs, cls, delay, len) => {
+    if (anim) { attrs.class = cls; attrs.style = '--d:' + delay + 'ms' + (len != null ? ';--len:' + len.toFixed(1) : ''); }
+    return attrs;
+  };
   // layers: arrows at the bottom, then the dots, then the text boxes on top so no label is ever covered by an arrow
   const gArr = svgEl('g', null, svg), gDot = svgEl('g', null, svg), gBox = svgEl('g', null, svg);
+  let idx = 0;
   items.slice().sort((a, b) => (a.big ? 1 : 0) - (b.big ? 1 : 0)).forEach(it => {
+    const dl = Math.min(idx++ * 30, 520);
     const col = LBL_COL[it.color] || LBL_COL.neutral, bg = LBL_BG[it.color] || LBL_BG.neutral;
     const R = it.big ? 7.5 : 5.5;
-    svgEl('circle', { cx: it.x, cy: it.y, r: R + 2.2, fill: '#14181d' }, gDot);
-    svgEl('circle', { cx: it.x, cy: it.y, r: R, fill: it.fill || col, stroke: '#fff', 'stroke-width': 1.6 }, gDot);
+    svgEl('circle', an({ cx: it.x, cy: it.y, r: R + 2.2, fill: '#14181d' }, 'svg-pop', dl), gDot);
+    svgEl('circle', an({ cx: it.x, cy: it.y, r: R, fill: it.fill || col, stroke: '#fff', 'stroke-width': 1.6 }, 'svg-pop', dl), gDot);
     if (!it.pos) return;
     const r = it.pos.r, ux = it.pos.ux, uy = it.pos.uy, d = it.pos.d;
     const ex = it.x + ux * d, ey = it.y + uy * d;          // where the arrow leaves the text box
@@ -695,32 +942,36 @@ function drawLabels(svg, W, H, items, extra) {
     const tx = it.x + ux * tipD, ty = it.y + uy * tipD;
     const bx = tx + ux * 10, by = ty + uy * 10;             // centre of the arrowhead base
     const nx = -uy, ny = ux;
+    const len = Math.hypot(bx - ex, by - ey);
     const head = [tx + ',' + ty, (bx + nx * 5) + ',' + (by + ny * 5), (bx - nx * 5) + ',' + (by - ny * 5)].join(' ');
-    svgEl('line', { x1: ex, y1: ey, x2: bx, y2: by, stroke: '#14181d', 'stroke-width': 5, 'stroke-linecap': 'round' }, gArr);
-    svgEl('polygon', { points: head, fill: '#14181d', stroke: '#14181d', 'stroke-width': 3, 'stroke-linejoin': 'round' }, gArr);
-    svgEl('line', { x1: ex, y1: ey, x2: bx, y2: by, stroke: col, 'stroke-width': 2.4, 'stroke-linecap': 'round' }, gArr);
-    svgEl('polygon', { points: head, fill: col }, gArr);
-    svgEl('rect', { x: r.x, y: r.y, width: r.w, height: r.h, rx: 5, fill: bg, stroke: col, 'stroke-width': it.big ? 2.4 : 1.6 }, gBox);
-    const t = svgEl('text', { x: r.x + r.w / 2, y: r.y + r.h / 2 + 4.5, 'text-anchor': 'middle', class: 'lbl-text' + (it.big ? ' big' : '') }, gBox);
+    svgEl('line', an({ x1: ex, y1: ey, x2: bx, y2: by, stroke: '#14181d', 'stroke-width': 5, 'stroke-linecap': 'round' }, 'arr-draw', dl, len), gArr);
+    svgEl('polygon', an({ points: head, fill: '#14181d', stroke: '#14181d', 'stroke-width': 3, 'stroke-linejoin': 'round' }, 'svg-pop', dl + 200), gArr);
+    svgEl('line', an({ x1: ex, y1: ey, x2: bx, y2: by, stroke: col, 'stroke-width': 2.4, 'stroke-linecap': 'round' }, 'arr-draw', dl, len), gArr);
+    svgEl('polygon', an({ points: head, fill: col }, 'svg-pop', dl + 200), gArr);
+    svgEl('rect', an({ x: r.x, y: r.y, width: r.w, height: r.h, rx: 5, fill: bg, stroke: col, 'stroke-width': it.big ? 2.4 : 1.6 }, 'svg-pop', dl + 120), gBox);
+    const t = svgEl('text', an({ x: r.x + r.w / 2, y: r.y + r.h / 2 + 4.5, 'text-anchor': 'middle', class: 'lbl-text' + (it.big ? ' big' : '') }, 'lbl-text svg-pop' + (it.big ? ' big' : ''), dl + 120), gBox);
     t.textContent = it.text;
   });
 }
 
-function drawRiver(g, it, W, H, col) {
+function drawRiver(g, it, W, H, col, anim) {
   const pts = it.points.map(p => (p.x * W).toFixed(1) + ',' + (p.y * H).toFixed(1)).join(' ');
-  svgEl('polyline', { points: pts, fill: 'none', stroke: '#14181d', 'stroke-width': 6, 'stroke-opacity': .55, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }, g);
-  svgEl('polyline', { points: pts, fill: 'none', stroke: col, 'stroke-width': 3, 'stroke-dasharray': '8 5', 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }, g);
+  const cls = anim ? { class: 'svg-fade' } : {};
+  svgEl('polyline', Object.assign({ points: pts, fill: 'none', stroke: '#14181d', 'stroke-width': 6, 'stroke-opacity': .55, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }, cls), g);
+  svgEl('polyline', Object.assign({ points: pts, fill: 'none', stroke: col, 'stroke-width': 3, 'stroke-dasharray': '8 5', 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }, cls), g);
 }
 
-function drawClickMarker(g, x, y, ok, pulse) {
-  svgEl('circle', { cx: x, cy: y, r: 17, fill: '#14181d', 'fill-opacity': .55 }, g);
+function drawClickMarker(g, x, y, ok, anim) {
+  const grp = svgEl('g', anim ? { class: 'svg-pop' } : null, g);
+  svgEl('circle', { cx: x, cy: y, r: 17, fill: '#14181d', 'fill-opacity': .55 }, grp);
   if (ok) {
-    svgEl('circle', { cx: x, cy: y, r: 11, fill: '#0ea855', stroke: '#fff', 'stroke-width': 3.5 }, g);
-    svgEl('path', { d: 'M' + (x - 5) + ' ' + y + ' L' + (x - 1.5) + ' ' + (y + 4) + ' L' + (x + 5.5) + ' ' + (y - 4), fill: 'none', stroke: '#fff', 'stroke-width': 3, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, g);
+    if (anim) { svgEl('circle', { class: 'ripple-ring', cx: x, cy: y, r: 12, fill: 'none', stroke: '#16d16a', 'stroke-width': 4 }, g); svgEl('circle', { class: 'ripple-ring', style: '--d:220ms', cx: x, cy: y, r: 12, fill: 'none', stroke: '#16d16a', 'stroke-width': 3 }, g); }
+    svgEl('circle', { cx: x, cy: y, r: 11, fill: '#0ea855', stroke: '#fff', 'stroke-width': 3.5 }, grp);
+    svgEl('path', { d: 'M' + (x - 5) + ' ' + y + ' L' + (x - 1.5) + ' ' + (y + 4) + ' L' + (x + 5.5) + ' ' + (y - 4), fill: 'none', stroke: '#fff', 'stroke-width': 3, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, grp);
   } else {
-    if (pulse) svgEl('circle', { class: 'pulse-ring', cx: x, cy: y, r: 13, fill: 'none', stroke: '#ff1f45', 'stroke-width': 4 }, g);
-    svgEl('circle', { cx: x, cy: y, r: 13, fill: '#e5173c', stroke: '#fff', 'stroke-width': 3.5 }, g);
-    svgEl('path', { d: 'M' + (x - 5) + ' ' + (y - 5) + ' L' + (x + 5) + ' ' + (y + 5) + ' M' + (x + 5) + ' ' + (y - 5) + ' L' + (x - 5) + ' ' + (y + 5), fill: 'none', stroke: '#fff', 'stroke-width': 3.4, 'stroke-linecap': 'round' }, g);
+    if (anim) svgEl('circle', { class: 'pulse-ring', cx: x, cy: y, r: 13, fill: 'none', stroke: '#ff1f45', 'stroke-width': 4 }, g);
+    svgEl('circle', { cx: x, cy: y, r: 13, fill: '#e5173c', stroke: '#fff', 'stroke-width': 3.5 }, grp);
+    svgEl('path', { d: 'M' + (x - 5) + ' ' + (y - 5) + ' L' + (x + 5) + ' ' + (y + 5) + ' M' + (x + 5) + ' ' + (y - 5) + ' L' + (x - 5) + ' ' + (y + 5), fill: 'none', stroke: '#fff', 'stroke-width': 3.4, 'stroke-linecap': 'round' }, grp);
   }
 }
 
@@ -733,12 +984,12 @@ function createMapView(host) {
   const mv = { shell, frame, inner, svg, painter: null, onClick: null };
 
   mv.size = () => ({ W: inner.clientWidth, H: inner.clientHeight });
-  mv.redraw = function () {
+  mv.redraw = function (anim) {
     while (svg.firstChild) svg.removeChild(svg.firstChild);
     const W = inner.clientWidth, H = inner.clientHeight;
     if (!W || !H) return;
     svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
-    if (mv.painter) mv.painter(svg, W, H);
+    if (mv.painter) mv.painter(svg, W, H, !!anim);
   };
   mv.layout = function () {
     const nw = img.naturalWidth, nh = img.naturalHeight;
@@ -874,15 +1125,123 @@ function createPlaceList(host, api) {
       if (!b) return;
       b.classList.add('sel');
       b.closest('.pl-grp').classList.remove('collapsed');
-      // scroll only the list itself (scrollIntoView would also scroll the whole page)
-      const sr = scroller.getBoundingClientRect(), br = b.getBoundingClientRect();
-      if (br.top < sr.top + 40) scroller.scrollTo({ top: scroller.scrollTop + br.top - sr.top - 44, behavior: 'smooth' });
-      else if (br.bottom > sr.bottom) scroller.scrollTo({ top: scroller.scrollTop + br.bottom - sr.bottom + 8, behavior: 'smooth' });
+      // scroll only the list itself (scrollIntoView would also scroll the whole page); offsets are layout px, so this is safe when the UI is scaled
+      const top = b.offsetTop, bottom = top + b.offsetHeight;
+      if (top < scroller.scrollTop + 40) scroller.scrollTo({ top: Math.max(0, top - 44), behavior: 'smooth' });
+      else if (bottom > scroller.scrollTop + scroller.clientHeight) scroller.scrollTo({ top: bottom - scroller.clientHeight + 8, behavior: 'smooth' });
     },
     setCat(id) { scroller.querySelectorAll('.pl-cat-btn').forEach(b => b.classList.toggle('on', b.dataset.cat === id)); },
     destroy() { off(); }
   };
 }
+
+/* ===================== PlacePicker: choose which places the generator asks (whole categories or one by one) ===================== */
+function createPickList(host) {
+  host.innerHTML =
+    '<div class="panel-box pk-box">' +
+      '<div class="pk-head">' +
+        '<div class="pk-title"><span>ප්‍රශ්න සඳහා ස්ථාන තෝරන්න</span><span class="pk-count"></span></div>' +
+        '<div class="pk-hint">ප්‍රවර්ගය සම්පූර්ණයෙන් තෝරන්න, නැතහොත් ▾ ඔබා ස්ථාන එකින් එක තෝරන්න.</div>' +
+        '<input type="search" class="pk-search" placeholder="ස්ථානයක් සොයන්න…" aria-label="ස්ථාන සොයන්න">' +
+        '<div class="pk-btns"><button type="button" data-a="all" title="සෙවුමක් ඇති විට පෙනෙන ස්ථාන පමණක් බලපායි">සියල්ල තෝරන්න</button>' +
+        '<button type="button" data-a="none" title="සෙවුමක් ඇති විට පෙනෙන ස්ථාන පමණක් බලපායි">සියල්ල ඉවත් කරන්න</button></div>' +
+      '</div>' +
+      '<div class="pk-scroll"></div>' +
+    '</div>';
+  const search = host.querySelector('.pk-search'), scroller = host.querySelector('.pk-scroll'), countEl = host.querySelector('.pk-count');
+  const groups = [];
+  CATEGORIES.filter(catHasData).forEach(c => {
+    const g = document.createElement('div');
+    g.className = 'pk-grp collapsed'; g.dataset.cat = c.id;
+    g.innerHTML = '<div class="pk-gh"><button type="button" class="pk-caret" aria-label="හකුළන්න / දිග හරින්න">▾</button>' +
+      '<label class="pk-gl"><input type="checkbox" class="pk-cat"><span class="pk-name">' + esc(c.label) + '</span><span class="pk-gn"></span></label></div><div class="pk-items"></div>';
+    const itemsEl = g.querySelector('.pk-items');
+    POOL_BY_CAT[c.id].forEach(it => {
+      const l = document.createElement('label');
+      l.className = 'pk-item'; l.dataset.key = it.key;
+      l.dataset.q = (it.name + ' ' + (it.alt || '')).toLowerCase();
+      l.innerHTML = '<input type="checkbox"><span class="pk-pn">' + esc(it.name) + (it.alt ? '<small>' + esc(it.alt) + '</small>' : '') + '</span>';
+      itemsEl.appendChild(l);
+    });
+    scroller.appendChild(g); groups.push(g);
+  });
+  const empty = document.createElement('div');
+  empty.className = 'pk-empty'; empty.textContent = 'ගැලපෙන ස්ථාන නැත'; empty.style.display = 'none';
+  scroller.appendChild(empty);
+
+  function sync() {
+    let total = 0, sel = 0;
+    groups.forEach(g => {
+      const its = g.querySelectorAll('.pk-item'); let n = 0;
+      its.forEach(l => {
+        const on = GenPick.has(l.dataset.key);
+        l.querySelector('input').checked = on; l.classList.toggle('on', on);
+        if (on) n++;
+      });
+      const cb = g.querySelector('.pk-cat');
+      cb.checked = n === its.length && n > 0;
+      cb.indeterminate = n > 0 && n < its.length;
+      g.querySelector('.pk-gn').textContent = n + '/' + its.length;
+      total += its.length; sel += n;
+    });
+    countEl.textContent = sel + ' / ' + total;
+  }
+  function applyFilter() {
+    const qv = search.value.trim().toLowerCase();
+    let any = false;
+    groups.forEach(g => {
+      let vis = 0;
+      g.querySelectorAll('.pk-item').forEach(l => {
+        const show = !qv || l.dataset.q.indexOf(qv) >= 0;
+        l.style.display = show ? '' : 'none';
+        if (show) vis++;
+      });
+      g.style.display = vis ? '' : 'none';
+      if (qv && vis) g.classList.remove('collapsed');
+      if (vis) any = true;
+    });
+    empty.style.display = any ? 'none' : '';
+  }
+  function visibleKeys() {
+    const out = [];
+    scroller.querySelectorAll('.pk-item').forEach(l => { if (l.style.display !== 'none' && l.closest('.pk-grp').style.display !== 'none') out.push(l.dataset.key); });
+    return out;
+  }
+  scroller.addEventListener('change', e => {
+    const t = e.target;
+    if (t.classList.contains('pk-cat')) GenPick.set(POOL_BY_CAT[t.closest('.pk-grp').dataset.cat].map(o => o.key), t.checked);
+    else { const l = t.closest('.pk-item'); if (l) GenPick.set([l.dataset.key], t.checked); }
+    Sound.toggle(t.checked);
+  });
+  scroller.addEventListener('click', e => { const car = e.target.closest('.pk-caret'); if (car) car.closest('.pk-grp').classList.toggle('collapsed'); });
+  host.querySelector('.pk-btns').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    GenPick.set(search.value.trim() ? visibleKeys() : ALL.map(o => o.key), b.dataset.a === 'all');
+    Sound.toggle(b.dataset.a === 'all');
+  });
+  search.addEventListener('input', applyFilter);
+  const off = Bus.on('genpick', sync);
+  sync();
+  return { sync, destroy: off };
+}
+
+/* ===================== small helpers ===================== */
+const reduceMotion = () => !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+function retrigger(el, cls) { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
+// count a number up from 0 (skipped when the user prefers reduced motion)
+function countUp(el, to, o) {
+  o = o || {};
+  const suffix = o.suffix || '', dur = o.dur || 750, dec = o.dec || 0;
+  if (reduceMotion() || !to) { el.textContent = Number(to).toFixed(dec) + suffix; return; }
+  const t0 = performance.now();
+  (function step(t) {
+    const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+    el.textContent = (to * e).toFixed(dec) + suffix;
+    if (k < 1) requestAnimationFrame(step);
+  })(t0);
+}
+// panels use display:contents, so "is this tab showing" is answered from the active class, not offsetParent
+const isShown = el => !!el.closest('.panel.active');
 
 /* ===================== quiz engine ===================== */
 function buildQuizEngine(mountEl, getSession, opts) {
@@ -892,15 +1251,15 @@ function buildQuizEngine(mountEl, getSession, opts) {
   const q = s => root.querySelector(s);
   const qState = q('.q-state'), rState = q('.r-state');
   const promptName = q('.prompt-name'), catTag = q('.cat-tag'), catNameEl = q('.cat-name');
-  const scoreVal = q('.score-val'), totalVal = q('.total-val'), streakVal = q('.streak-val');
+  const scoreVal = q('.score-val'), totalVal = q('.total-val'), streakVal = q('.streak-val'), streakPill = q('.streak-pill');
   const riverHint = q('.river-hint'), noTrackTag = q('.no-track-tag');
   const timerWrap = q('.timer'), timerBar = q('.timer-bar i'), timerNum = q('.timer-num');
   const feedback = q('.feedback'), nextBtn = q('.next-btn');
   const finalScore = q('.final-score'), finalTotal = q('.final-total');
-  const rMeta = q('.r-meta'), rNote = q('.r-note'), reviewList = q('.review-list');
+  const rMeta = q('.r-meta'), rNote = q('.r-note'), reviewList = q('.review-list'), rActions = q('.r-actions');
   const restartBtn = q('.restart-btn'), mistakesBtn = q('.mistakes-btn'), exitBtn = q('.exit-btn');
-
   const splitEl = q('.split');
+
   const mv = createMapView(q('.col-map'));
   const shell = mv.shell, mapFrame = mv.frame;
 
@@ -913,28 +1272,31 @@ function buildQuizEngine(mountEl, getSession, opts) {
   // while a question is waiting for an answer its target must never be revealed by the list / category views
   const blockedKey = () => (!locked && !scene.summary && idx < order.length) ? order[idx].key : null;
   function say(msg, cls) { feedback.textContent = msg; feedback.className = 'feedback ' + (cls || ''); }
+  function setStreak(n) { streak = n; streakVal.textContent = n; streakPill.classList.toggle('hot', n >= 3); }
 
   const pl = createPlaceList(q('.col-list'), { onPick: key => pickPlace(key), onCat: id => pickCategory(id) });
 
   function pickPlace(key) {
-    if (key === blockedKey()) { say('ඇසූ ස්ථානය පිළිතුරු දුන් පසු සිතියමේ බලන්න', 'locked-hint'); return; }
+    if (key === blockedKey()) { say('ඇසූ ස්ථානය පිළිතුරු දුන් පසු සිතියමේ බලන්න', 'locked-hint'); Sound.warn(); return; }
     scene.sel = scene.sel === key ? null : key;
+    Sound.select();
     pl.setSel(scene.sel);
-    mv.redraw();
+    mv.redraw(true);
     if (scene.sel) { const it = BY_KEY[key]; mv.reveal([{ x: it.ax, y: it.ay }]); }
   }
   function pickCategory(id) {
     scene.showCat = scene.showCat === id ? null : id;
+    Sound.select();
     pl.setCat(scene.showCat);
     const cur = order[idx];
     catTag.classList.toggle('on', !!(scene.showCat && cur && cur.catId === scene.showCat));
-    mv.redraw();
+    mv.redraw(true);
     if (scene.showCat && blockedKey() && cur && cur.catId === id) say('ඇසූ ස්ථානය හැර අනෙක් ස්ථාන පෙන්වා ඇත', 'locked-hint');
   }
   catTag.addEventListener('click', () => { const cur = order[idx]; if (cur && !scene.summary) pickCategory(cur.catId); });
 
   /* ----- painting the overlay ----- */
-  mv.painter = (svg, W, H) => {
+  mv.painter = (svg, W, H, anim) => {
     const A = scene.answer, blocked = blockedKey(), names = Settings.get('names');
     const gRiv = svgEl('g', null, svg), gTol = svgEl('g', null, svg), gLab = svgEl('g', null, svg), gMark = svgEl('g', null, svg);
 
@@ -953,14 +1315,15 @@ function buildQuizEngine(mountEl, getSession, opts) {
     list.forEach(l => {
       if (l.it.type !== 'river') return;
       const col = l.answer ? '#ff9f1a' : (l.color === 'hit' ? '#16d16a' : l.color === 'miss' ? '#ff3b5c' : '#ff9f1a');
-      drawRiver(gRiv, l.it, W, H, col);
+      drawRiver(gRiv, l.it, W, H, col, anim);
     });
 
     const extra = [];
     if (A) {
       const tx = A.target.ax * W, ty = A.target.ay * H, rr = (A.target.tolCm / PAGE_CM) * W;
-      svgEl('circle', { cx: tx, cy: ty, r: rr, fill: 'rgba(22,209,106,.18)', stroke: '#fff', 'stroke-width': 7, 'stroke-opacity': .9 }, gTol);
-      const ring = { cx: tx, cy: ty, r: rr, fill: 'none', stroke: '#0ea855', 'stroke-width': 3.5 };
+      const grow = anim ? { class: 'ring-grow' } : {};
+      svgEl('circle', Object.assign({ cx: tx, cy: ty, r: rr, fill: 'rgba(22,209,106,.18)', stroke: '#fff', 'stroke-width': 7, 'stroke-opacity': .9 }, grow), gTol);
+      const ring = Object.assign({ cx: tx, cy: ty, r: rr, fill: 'none', stroke: '#0ea855', 'stroke-width': 3.5 }, grow);
       if (!A.correct) ring['stroke-dasharray'] = '9 6';
       svgEl('circle', ring, gTol);
       extra.push({ x: tx - rr - 4, y: ty - rr - 4, w: rr * 2 + 8, h: rr * 2 + 8 });
@@ -980,14 +1343,16 @@ function buildQuizEngine(mountEl, getSession, opts) {
       color: l.color, big: !!l.big,
       noText: !names && !l.big
     }));
-    drawLabels(gLab, W, H, items, extra);
+    drawLabels(gLab, W, H, items, extra, anim);
 
-    list.forEach(l => {
-      if (l.pulse && !(A && A.target.key === l.it.key)) {
-        svgEl('circle', { class: 'pulse-ring', cx: l.it.ax * W, cy: l.it.ay * H, r: 10, fill: 'none', stroke: '#38bdf8', 'stroke-width': 3 }, gMark);
-      }
-    });
-    if (A && A.click) { drawClickMarker(gMark, A.click.x * W, A.click.y * H, A.correct, A.fresh); A.fresh = false; }
+    if (anim) {
+      list.forEach(l => {
+        if (l.pulse && !(A && A.target.key === l.it.key)) {
+          svgEl('circle', { class: 'pulse-ring', cx: l.it.ax * W, cy: l.it.ay * H, r: 10, fill: 'none', stroke: '#38bdf8', 'stroke-width': 3 }, gMark);
+        }
+      });
+    }
+    if (A && A.click) drawClickMarker(gMark, A.click.x * W, A.click.y * H, A.correct, anim);
   };
 
   /* ----- timer ----- */
@@ -1007,11 +1372,13 @@ function buildQuizEngine(mountEl, getSession, opts) {
     if (!Settings.get('timed') || locked || idx >= order.length || scene.summary) return;
     tTotal = Number(Settings.get('secs')) || 15; tLeft = tTotal;
     timerWrap.style.display = ''; paintTimer();
-    let last = performance.now();
+    let last = performance.now(), lastSec = Math.ceil(tLeft);
     timerId = setInterval(() => {
       const now = performance.now(), dt = (now - last) / 1000; last = now;
-      if (document.hidden || root.offsetParent === null) return;   // paused while this tab / the page is hidden
+      if (document.hidden || !isShown(root)) return;   // paused while this tab / the page is hidden
       tLeft -= dt; paintTimer();
+      const sec = Math.ceil(Math.max(0, tLeft));
+      if (sec !== lastSec) { lastSec = sec; if (sec > 0 && sec <= 5) Sound.tick(sec <= 2); }
       if (tLeft <= 0) { stopTimer(); if (!locked) answer(null, null, true); }
     }, 120);
   }
@@ -1019,7 +1386,8 @@ function buildQuizEngine(mountEl, getSession, opts) {
   /* ----- flow ----- */
   function init(custom) {
     order = custom || getSession();
-    idx = 0; locked = false; results = []; streak = 0; bestStreak = 0;
+    idx = 0; locked = false; results = []; bestStreak = 0;
+    setStreak(0);
     sid = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     scene = { answer: null, showCat: null, sel: null, summary: false };
     totalVal.textContent = order.length;
@@ -1035,15 +1403,16 @@ function buildQuizEngine(mountEl, getSession, opts) {
     feedback.textContent = ''; feedback.className = 'feedback';
     nextBtn.style.display = 'none'; nextBtn.classList.remove('nudge');
     locked = false; mapFrame.classList.remove('locked');
-    shell.classList.remove('hit-state', 'miss-state', 'flash');
+    shell.classList.remove('hit-state', 'miss-state', 'flash', 'flash-ok');
     if (idx >= order.length) { finish(); return; }
+    if (idx > 0) Sound.next();
     const it = order[idx];
     currentAskedName = pickAskedName(it);
     promptName.textContent = currentAskedName;
+    retrigger(promptName, 'swap');
     catNameEl.textContent = it.categoryLabel || '';
     riverHint.style.display = it.type === 'river' ? '' : 'none';
     scoreVal.textContent = results.filter(r => r.correct).length;
-    streakVal.textContent = streak;
     noTrackTag.style.display = Settings.get('track') ? 'none' : '';
     mv.redraw();
     startTimer();
@@ -1060,22 +1429,27 @@ function buildQuizEngine(mountEl, getSession, opts) {
       correct = distPx <= (target.tolCm / PAGE_CM) * sz.W;
       distCm = +(distPx / sz.W * PAGE_CM).toFixed(2);
     }
-    scene.answer = { target, correct, timeout: !!timeout, click: timeout ? null : { x: fx, y: fy }, fresh: true };
+    scene.answer = { target, correct, timeout: !!timeout, click: timeout ? null : { x: fx, y: fy } };
 
     if (correct) {
       say('✓ නිවැරදියි! (' + distCm.toFixed(2) + ' cm)', 'hit-text');
-      streak++; if (streak > bestStreak) bestStreak = streak;
+      setStreak(streak + 1); if (streak > bestStreak) bestStreak = streak;
+      retrigger(streakVal, 'bump');
+      Sound.correct(streak);
+      if (streak === 3 || streak === 5 || streak === 10 || (streak > 10 && streak % 5 === 0)) Sound.streak(streak);
     } else {
       say(timeout ? '✗ කාලය අවසන්! නිවැරදි ස්ථානය පෙන්වා ඇත' : '✗ වැරදියි — නිවැරදි ස්ථානය පෙන්වා ඇත (' + distCm.toFixed(2) + ' cm ඈත)', 'miss-text');
-      streak = 0;
+      setStreak(0);
+      if (timeout) Sound.timeout(); else Sound.wrong();
     }
-    streakVal.textContent = streak;
-    shell.classList.remove('hit-state', 'miss-state', 'flash');
+    shell.classList.remove('hit-state', 'miss-state', 'flash', 'flash-ok');
     shell.classList.add(correct ? 'hit-state' : 'miss-state');
-    if (!correct) { void shell.offsetWidth; shell.classList.add('flash'); }
+    void shell.offsetWidth;
+    shell.classList.add(correct ? 'flash-ok' : 'flash');
 
     results.push({ item: target, key: target.key, name: currentAskedName, categoryLabel: target.categoryLabel, correct, distCm, timeout: !!timeout });
     scoreVal.textContent = results.filter(r => r.correct).length;
+    if (correct) retrigger(scoreVal, 'bump');
 
     if (Settings.get('track')) {
       Tracker.add({
@@ -1084,7 +1458,7 @@ function buildQuizEngine(mountEl, getSession, opts) {
       });
     }
 
-    mv.redraw();
+    mv.redraw(true);
     mv.reveal(scene.answer.click ? [scene.answer.click, { x: target.ax, y: target.ay }] : [{ x: target.ax, y: target.ay }]);
     nextBtn.style.display = '';
     try { nextBtn.focus({ preventScroll: true }); } catch (e) { /* ignore */ }
@@ -1094,7 +1468,7 @@ function buildQuizEngine(mountEl, getSession, opts) {
     if (idx >= order.length || scene.summary) return;
     if (locked) {
       nextBtn.classList.remove('nudge'); void nextBtn.offsetWidth; nextBtn.classList.add('nudge');
-      nextBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      if (!window.matchMedia('(min-width: 1100px)').matches) nextBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       return;
     }
     answer(fx, fy, false);
@@ -1104,34 +1478,39 @@ function buildQuizEngine(mountEl, getSession, opts) {
     stopTimer();
     scene = { answer: null, showCat: null, sel: null, summary: true };
     pl.setSel(null); pl.setCat(null);
-    shell.classList.remove('hit-state', 'miss-state', 'flash');
+    shell.classList.remove('hit-state', 'miss-state', 'flash', 'flash-ok');
     qState.style.display = 'none'; rState.style.display = '';
     splitEl.classList.add('summary');
     const okN = results.filter(r => r.correct).length;
-    finalScore.textContent = okN; finalTotal.textContent = order.length;
     const pct = order.length ? Math.round(okN / order.length * 100) : 0;
-    rMeta.innerHTML = '<span>නිවැරදි: <b>' + pct + '%</b></span><span>දීර්ඝතම අඛණ්ඩ නිවැරදි: <b>' + bestStreak + '</b></span>';
+    finalTotal.textContent = order.length;
+    Sound.finish(pct);
+    countUp(finalScore, okN, { dur: 800 });
+    rMeta.innerHTML = '<span>නිවැරදි: <b class="pct">0%</b></span><span>දීර්ඝතම අඛණ්ඩ නිවැරදි: <b>' + bestStreak + '</b></span>';
+    countUp(rMeta.querySelector('.pct'), pct, { suffix: '%', dur: 800 });
     rNote.textContent = 'සිතියමේ සියලු ස්ථාන පෙන්වා ඇත — කොළ: නිවැරදි, රතු: වැරදි. පහත ස්ථානයක් ක්ලික් කර සිතියමේ බලන්න.';
     reviewList.innerHTML = '';
-    results.forEach(r => {
+    results.forEach((r, i) => {
       const li = document.createElement('li');
       li.className = r.correct ? 'ok' : 'bad';
       li.dataset.key = r.key;
+      li.style.setProperty('--i', Math.min(i, 14));
       li.innerHTML = '<span class="rname">' + esc(r.name) + '<span class="rcat">' + esc(r.categoryLabel || '') + '</span></span>' +
         '<span class="mark">' + (r.correct ? '✓ ' : '✗ ') + (r.timeout ? 'කාලය අවසන්' : r.distCm.toFixed(2) + 'cm') + '</span>';
       reviewList.appendChild(li);
     });
-    mistakesBtn.style.display = results.some(r => !r.correct) ? '' : 'none';
+    const hasMiss = results.some(r => !r.correct);
+    mistakesBtn.style.display = hasMiss ? '' : 'none';
+    rActions.classList.toggle('single', !hasMiss);
     exitBtn.style.display = opts.onExit ? '' : 'none';
-    q('.col-quiz').scrollTop = 0;
-    mv.redraw();
-    if (!window.matchMedia('(min-width: 880px)').matches) rState.scrollIntoView({ behavior: 'smooth', block: 'nearest' });   // stacked (phone) layout only
+    mv.redraw(true);
+    if (!window.matchMedia('(min-width: 1100px)').matches) rState.scrollIntoView({ behavior: 'smooth', block: 'nearest' });   // stacked (phone) layout only
   }
 
   reviewList.addEventListener('click', e => { const li = e.target.closest('li'); if (li) pickPlace(li.dataset.key); });
   nextBtn.addEventListener('click', () => { if (!locked) return; idx++; showCurrent(); });
-  restartBtn.addEventListener('click', () => init());
-  mistakesBtn.addEventListener('click', () => { init(shuffle(results.filter(r => !r.correct).map(r => r.item))); });
+  restartBtn.addEventListener('click', () => { Sound.start(); init(); });
+  mistakesBtn.addEventListener('click', () => { Sound.start(); init(shuffle(results.filter(r => !r.correct).map(r => r.item))); });
   exitBtn.addEventListener('click', () => { if (opts.onExit) opts.onExit(); });
 
   cleanups.push(Bus.on('settings', k => {
@@ -1162,35 +1541,37 @@ function progressChart(sessions) {
     s += '<line class="gridl" x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v) + '" y2="' + y(v) + '"/>' +
       '<text class="ax" x="' + (L - 5) + '" y="' + (y(v) + 4) + '" text-anchor="end">' + (v * 100) + '%</text>';
   });
-  s += '<polyline fill="none" stroke="#e0ab4c" stroke-width="2.5" stroke-linejoin="round" points="' + pts.map((p, i) => x(i) + ',' + y(p.ok / p.n)).join(' ') + '"/>';
+  s += '<polyline class="chart-line" pathLength="100" fill="none" stroke="#e0ab4c" stroke-width="2.5" stroke-linejoin="round" points="' + pts.map((p, i) => x(i) + ',' + y(p.ok / p.n)).join(' ') + '"/>';
   pts.forEach((p, i) => {
     const a = p.ok / p.n;
-    s += '<circle cx="' + x(i) + '" cy="' + y(a) + '" r="4.5" fill="' + (a < 0.5 ? '#ff3b5c' : '#16d16a') + '" stroke="#14181d" stroke-width="1.5"><title>' + fd(p.t) + ' — ' + Math.round(a * 100) + '% (' + p.ok + '/' + p.n + ')</title></circle>';
+    s += '<circle style="--i:' + i + '" cx="' + x(i) + '" cy="' + y(a) + '" r="4.5" fill="' + (a < 0.5 ? '#ff3b5c' : '#16d16a') + '" stroke="#14181d" stroke-width="1.5"><title>' + fd(p.t) + ' — ' + Math.round(a * 100) + '% (' + p.ok + '/' + p.n + ')</title></circle>';
   });
   s += '<text class="ax" x="' + L + '" y="' + (H - 5) + '">' + fd(pts[0].t) + '</text><text class="ax" x="' + (W - R) + '" y="' + (H - 5) + '" text-anchor="end">' + fd(pts[pts.length - 1].t) + '</text></svg>';
   return s;
 }
 
 function buildAnalytics(root, hooks) {
-  root.innerHTML = '<div class="split two"><div class="col-quiz"><div class="panel-box an-box"></div></div><div class="col-map"></div></div>' +
+  root.innerHTML = '<div class="split two"><div class="panel-box an-box an-stats"></div><div class="col-map"></div></div>' +
     '<input type="file" class="an-file" accept=".json,application/json" hidden>';
   const box = root.querySelector('.an-box'), fileIn = root.querySelector('.an-file');
   const mv = createMapView(root.querySelector('.col-map'));
-  let focus = null, msg = '', resetArmed = false, resetTimer = null;
+  let focus = null, msg = '', resetArmed = false, resetTimer = null, animTimer = null;
 
   const focusKeys = () => !focus ? null : focus.type === 'cat' ? POOL_BY_CAT[focus.id].map(o => o.key) : focus.keys;
+  const catLabel = id => { const c = CATEGORIES.find(x => x.id === id); return c ? c.label : id; };
 
-  mv.painter = (svg, W, H) => {
+  mv.painter = (svg, W, H, anim) => {
     const st = Stats.get(), fk = focusKeys();
     const gRiv = svgEl('g', null, svg), gDots = svgEl('g', null, svg), gLab = svgEl('g', null, svg);
     // heat dots: size and colour follow how often a place is missed (grey = never asked)
     const rate = it => { const s = st.byKey[it.key]; return s ? s.miss / s.att : -1; };
-    ALL.slice().sort((a, b) => rate(a) - rate(b)).forEach(it => {
+    ALL.slice().sort((a, b) => rate(a) - rate(b)).forEach((it, i) => {
       const s = st.byKey[it.key], x = it.ax * W, y = it.ay * H;
       const rt = s ? s.miss / s.att : 0;
       const r = s ? 5 + 7 * rt : 3.5;
-      svgEl('circle', { cx: x, cy: y, r: r + 1.8, fill: '#fff', 'fill-opacity': .9 }, gDots);
-      svgEl('circle', { cx: x, cy: y, r, fill: s ? heat(rt) : '#8d97a3', stroke: '#14181d', 'stroke-opacity': .5, 'stroke-width': 1 }, gDots);
+      const pop = anim ? { class: 'svg-pop', style: '--d:' + Math.min(i * 6, 500) + 'ms' } : {};
+      svgEl('circle', Object.assign({ cx: x, cy: y, r: r + 1.8, fill: '#fff', 'fill-opacity': .9 }, pop), gDots);
+      svgEl('circle', Object.assign({ cx: x, cy: y, r, fill: s ? heat(rt) : '#8d97a3', stroke: '#14181d', 'stroke-opacity': .5, 'stroke-width': 1 }, pop), gDots);
     });
     let keys, mode;
     if (fk) { keys = fk; mode = focus.type; }
@@ -1198,7 +1579,7 @@ function buildAnalytics(root, hooks) {
     const items = [];
     keys.forEach((k, i) => {
       const it = BY_KEY[k]; if (!it) return;
-      if (it.type === 'river' && fk) drawRiver(gRiv, it, W, H, '#ff9f1a');
+      if (it.type === 'river' && fk) drawRiver(gRiv, it, W, H, '#ff9f1a', anim);
       const s = st.byKey[k];
       const pct = s ? Math.round(s.miss / s.att * 100) : null;
       let color = 'neutral', big = false;
@@ -1206,21 +1587,21 @@ function buildAnalytics(root, hooks) {
       else if (mode === 'keys') { color = (focus.colors && focus.colors[i]) || 'sel'; big = true; }
       items.push({ x: it.ax * W, y: it.ay * H, text: it.name + (pct != null ? '  ' + pct + '%' : ''), color, big, fill: s ? heat(s.miss / s.att) : null });
     });
-    drawLabels(gLab, W, H, items, []);
-    if (mode === 'keys') {
+    drawLabels(gLab, W, H, items, [], anim);
+    if (mode === 'keys' && anim) {
       items.forEach(it => svgEl('circle', { class: 'pulse-ring', cx: it.x, cy: it.y, r: 10, fill: 'none', stroke: '#38bdf8', 'stroke-width': 3 }, gLab));
     }
   };
 
   function focusLabel() {
     if (!focus) return '';
-    if (focus.type === 'cat') return CAT_LABEL(focus.id);
+    if (focus.type === 'cat') return catLabel(focus.id);
     return focus.keys.map(k => BY_KEY[k].name).join(' ↔ ');
   }
-  function CAT_LABEL(id) { const c = CATEGORIES.find(x => x.id === id); return c ? c.label : id; }
 
-  function render() {
+  function render(anim) {
     const st = Stats.get();
+    let n = 0;                                   // running index used to stagger the entrance animation
     let h = '<div class="an-title">ඔබේ දත්ත විශ්ලේෂණය</div>';
     if (!Settings.get('track')) h += '<div class="an-note warn">දත්ත සටහන් කිරීම දැනට අක්‍රීයයි — අලුත් පිළිතුරු සටහන් නොවේ.</div>';
     if (!storageOK) h += '<div class="an-note warn">මෙම බ්‍රවුසරයේ දත්ත සුරැකිය නොහැක. මෙම පිටුව වසන තුරු පමණක් දත්ත රැඳේ.</div>';
@@ -1234,10 +1615,10 @@ function buildAnalytics(root, hooks) {
       const cnt = { 'lv-new': 0, 'lv-learning': 0, 'lv-weak': 0, 'lv-mastered': 0 };
       ALL.forEach(it => { cnt[levelInfo(it.key).cls]++; });
       h += '<div class="an-tiles">' +
-        '<div class="tile"><b>' + st.att + '</b><span>පිළිතුරු</span></div>' +
-        '<div class="tile"><b>' + acc + '%</b><span>නිවැරදි</span></div>' +
-        '<div class="tile"><b>' + (st.avgD == null ? '—' : st.avgD.toFixed(2)) + '</b><span>සාමාන්‍ය දුර (cm)</span></div>' +
-        '<div class="tile"><b>' + st.masteredCount + '/' + ALL.length + '</b><span>ප්‍රගුණ කළ ස්ථාන</span></div></div>' +
+        '<div class="tile" style="--i:0"><b><span data-count="' + st.att + '">' + st.att + '</span></b><span>පිළිතුරු</span></div>' +
+        '<div class="tile" style="--i:1"><b><span data-count="' + acc + '" data-suffix="%">' + acc + '%</span></b><span>නිවැරදි</span></div>' +
+        '<div class="tile" style="--i:2"><b>' + (st.avgD == null ? '—' : '<span data-count="' + st.avgD.toFixed(2) + '" data-dec="2">' + st.avgD.toFixed(2) + '</span>') + '</b><span>සාමාන්‍ය දුර (cm)</span></div>' +
+        '<div class="tile" style="--i:3"><b><span data-count="' + st.masteredCount + '">' + st.masteredCount + '</span>/' + ALL.length + '</b><span>ප්‍රගුණ කළ ස්ථාන</span></div></div>' +
         '<div class="lv-row"><span><i class="dot lv-new"></i>අලුත් <b>' + cnt['lv-new'] + '</b></span><span><i class="dot lv-learning"></i>ඉගෙනගන්නා <b>' + cnt['lv-learning'] + '</b></span>' +
         '<span><i class="dot lv-weak"></i>දුර්වල <b>' + cnt['lv-weak'] + '</b></span><span><i class="dot lv-mastered"></i>ප්‍රගුණයි <b>' + cnt['lv-mastered'] + '</b></span></div>' +
         '<div class="heat-legend"><span>සිතියම: නිවැරදි</span><i></i><span>වැරදි</span><span>(අළු = තවම නැත)</span></div>' +
@@ -1248,7 +1629,7 @@ function buildAnalytics(root, hooks) {
       cats.sort((a, b) => (a.acc == null ? 1 : 0) - (b.acc == null ? 1 : 0) || (a.acc || 0) - (b.acc || 0));
       h += '<div class="an-sec"><h3>ප්‍රවර්ග අනුව</h3>' + cats.map(o => {
         const p = o.s ? Math.round(o.acc * 100) : null;
-        return '<button type="button" class="bar-row' + (focus && focus.type === 'cat' && focus.id === o.c.id ? ' on' : '') + '" data-act="cat" data-id="' + esc(o.c.id) + '">' +
+        return '<button type="button" style="--i:' + (n++) + '" class="bar-row' + (focus && focus.type === 'cat' && focus.id === o.c.id ? ' on' : '') + '" data-act="cat" data-id="' + esc(o.c.id) + '">' +
           '<span>' + esc(o.c.label) + '</span><span class="bt' + (o.s ? '' : ' none') + '"><i style="width:' + (p || 0) + '%"></i></span>' +
           '<span class="bp">' + (o.s ? p + '%' : '—') + '<small>' + (o.s ? o.s.att : 0) + '</small></span></button>';
       }).join('') + '</div>';
@@ -1258,7 +1639,7 @@ function buildAnalytics(root, hooks) {
       if (!st.weakList.length) h += '<div class="an-muted">වැරදි පිළිතුරු නැත (හෝ සියල්ල දැන් ප්‍රගුණයි) — නියමයි!</div>';
       st.weakList.slice(0, 10).forEach(s => {
         const it = BY_KEY[s.key], li = levelInfo(s.key);
-        h += '<button type="button" class="wk-row" data-act="place" data-key="' + esc(s.key) + '"><i class="dot ' + li.cls + '" title="' + li.label + '"></i>' +
+        h += '<button type="button" style="--i:' + (n++) + '" class="wk-row" data-act="place" data-key="' + esc(s.key) + '"><i class="dot ' + li.cls + '" title="' + li.label + '"></i>' +
           '<span class="wn">' + esc(it.name) + '<small>' + esc(it.categoryLabel) + '</small></span>' +
           '<span class="wp">' + Math.round(s.miss / s.att * 100) + '%<small>' + s.miss + '/' + s.att + ' වැරදි</small></span></button>';
       });
@@ -1268,7 +1649,7 @@ function buildAnalytics(root, hooks) {
       h += '<div class="an-sec"><h3>ඔබ පටලවා ගන්නා ස්ථාන</h3>';
       if (!st.confusions.length) h += '<div class="an-muted">තවම පැහැදිලි රටාවක් නැත (එකම පටලැවිල්ල 2 වතාවක්වත් වූ විට මෙහි පෙන්වයි).</div>';
       st.confusions.forEach(c => {
-        h += '<button type="button" class="cf-row" data-act="conf" data-from="' + esc(c.from) + '" data-to="' + esc(c.to) + '"><span><b>' + esc(BY_KEY[c.from].name) +
+        h += '<button type="button" style="--i:' + (n++) + '" class="cf-row" data-act="conf" data-from="' + esc(c.from) + '" data-to="' + esc(c.to) + '"><span><b>' + esc(BY_KEY[c.from].name) +
           '</b> සෙවීමේදී <b>' + esc(BY_KEY[c.to].name) + '</b> ළඟ ක්ලික් කළා</span><em>' + c.n + '×</em></button>';
       });
       h += '</div>';
@@ -1281,9 +1662,17 @@ function buildAnalytics(root, hooks) {
       '<button type="button" class="act-btn" data-act="import">ආනයනය</button>' +
       '<button type="button" class="act-btn danger' + (resetArmed ? ' armed' : '') + '" data-act="reset"' + (st.att ? '' : ' disabled') + '>' + (resetArmed ? 'ස්ථිරද? නැවත ක්ලික් කරන්න' : 'සියල්ල මකන්න') + '</button>' +
       '</div></div>';
+
+    // entrance animation only while the tab is being opened (class is removed again shortly after)
+    clearTimeout(animTimer);
+    box.classList.toggle('anim', !!anim);
     box.innerHTML = h;
+    if (anim) {
+      box.querySelectorAll('[data-count]').forEach(el => countUp(el, Number(el.dataset.count), { suffix: el.dataset.suffix || '', dec: Number(el.dataset.dec) || 0 }));
+      animTimer = setTimeout(() => box.classList.remove('anim'), 2200);
+    }
   }
-  function refresh() { render(); mv.redraw(); }
+  function refresh(anim) { render(anim); mv.redraw(anim); }
 
   box.addEventListener('click', e => {
     const b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
@@ -1293,7 +1682,8 @@ function buildAnalytics(root, hooks) {
     if (act === 'cat') focus = (focus && focus.type === 'cat' && focus.id === b.dataset.id) ? null : { type: 'cat', id: b.dataset.id };
     else if (act === 'place') {
       focus = { type: 'keys', keys: [b.dataset.key] };
-      refresh(); const it = BY_KEY[b.dataset.key]; mv.reveal([{ x: it.ax, y: it.ay }]); return;
+      box.classList.remove('anim'); render(); mv.redraw(true);
+      const it = BY_KEY[b.dataset.key]; mv.reveal([{ x: it.ax, y: it.ay }]); return;
     }
     else if (act === 'conf') focus = { type: 'keys', keys: [b.dataset.from, b.dataset.to], colors: ['sel', 'miss'] };
     else if (act === 'clear') focus = null;
@@ -1304,34 +1694,35 @@ function buildAnalytics(root, hooks) {
       a.href = url; a.download = 'sri-lanka-quiz-data-' + new Date().toISOString().slice(0, 10) + '.json';
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 2000);
-      msg = 'දත්ත අපනයනය කළා';
+      msg = 'දත්ත අපනයනය කළා'; Sound.ok();
     }
     else if (act === 'import') { fileIn.click(); return; }
     else if (act === 'reset') {
       if (!resetArmed) {
-        resetArmed = true; clearTimeout(resetTimer);
+        resetArmed = true; Sound.warn(); clearTimeout(resetTimer);
         resetTimer = setTimeout(() => { resetArmed = false; render(); }, 4000);
       } else {
         resetArmed = false; clearTimeout(resetTimer);
-        Tracker.clear(); focus = null; msg = 'සියලු දත්ත මකා දැමුවා';
+        Tracker.clear(); focus = null; msg = 'සියලු දත්ත මකා දැමුවා'; Sound.down();
         return;   // Tracker.clear() emits 'tracker', which refreshes this view
       }
     }
-    refresh();
+    box.classList.remove('anim');
+    render(); mv.redraw(act === 'cat' || act === 'conf');
   });
   fileIn.addEventListener('change', () => {
     const f = fileIn.files[0]; if (!f) return;
     const rd = new FileReader();
     rd.onload = () => {
-      try { const r = Tracker.importText(String(rd.result)); msg = 'සටහන් ' + r.added + ' ක් ආනයනය කළා'; }
-      catch (err) { msg = 'ගොනුව වලංගු නැත'; }
+      try { const r = Tracker.importText(String(rd.result)); msg = 'සටහන් ' + r.added + ' ක් ආනයනය කළා'; Sound.ok(); }
+      catch (err) { msg = 'ගොනුව වලංගු නැත'; Sound.warn(); }
       fileIn.value = ''; refresh();
     };
     rd.readAsText(f);
   });
 
-  Bus.on('tracker', () => { if (root.offsetParent !== null) refresh(); });
-  Bus.on('settings', k => { if (k === 'track' && root.offsetParent !== null) render(); });
+  Bus.on('tracker', () => { if (isShown(root)) refresh(); });
+  Bus.on('settings', k => { if (k === 'track' && isShown(root)) render(); });
   render();
   return { refresh };
 }
@@ -1341,12 +1732,57 @@ document.addEventListener('DOMContentLoaded', () => {
   const tabsRow = document.getElementById('tabsRow');
   const panelsRoot = document.getElementById('panelsRoot');
   const emptyState = document.getElementById('emptyState');
+  const appEl = document.getElementById('app'), wrap = document.getElementById('wrap'), host = document.getElementById('scaleHost');
   const dataCats = CATEGORIES.filter(catHasData);
+
+  /* ----- screen-adaptive zoom + layout mode -----
+     The whole page is laid out in a "virtual" viewport and scaled to fit the real one, so the sidebar,
+     map and lists always fit the user's screen (any resolution, browser zoom or display scaling). */
+  const REF_W = 1400, REF_H = 780;
+  let curScale = 1;
+  const zLabel = document.getElementById('zLabel');
+  function autoScale(availW) { return Math.max(0.65, Math.min(1.3, Math.min(availW / REF_W, window.innerHeight / REF_H))); }
+  function syncHostHeight() {
+    if (curScale === 1) { host.style.height = ''; return; }
+    host.style.height = Math.ceil(wrap.offsetHeight * curScale) + 'px';
+  }
+  function applyLayout() {
+    const availW = host.clientWidth || document.documentElement.clientWidth || window.innerWidth;   // the real container width (correct with classic or overlay scrollbars)
+    const desk = availW >= 1100;
+    let s = 1;
+    if (desk) {
+      const z = Settings.get('zoom');
+      s = z === 'auto' ? autoScale(availW) : z / 100;
+      s = Math.max(0.5, Math.min(s, availW / 1100));   // never drop below the 3-column layout width
+    }
+    curScale = s;
+    wrap.classList.toggle('is-desk', desk);
+    wrap.classList.toggle('is-stack', !desk);
+    wrap.classList.toggle('is-phone', availW <= 640);
+    if (s === 1) { wrap.style.width = ''; wrap.style.transform = ''; wrap.style.transformOrigin = ''; }
+    else { wrap.style.width = (availW / s) + 'px'; wrap.style.transformOrigin = '0 0'; wrap.style.transform = 'scale(' + s + ')'; }
+    wrap.style.setProperty('--app-h', Math.max(620, Math.round(window.innerHeight / s - 20)) + 'px');
+    zLabel.textContent = (Settings.get('zoom') === 'auto' ? 'ස්වයං ' : '') + Math.round(s * 100) + '%';
+    syncHostHeight();
+  }
+  document.getElementById('uiZoom').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    Sound.select();
+    if (b.dataset.z === 'auto') Settings.set('zoom', 'auto');
+    else {
+      const cur = Math.round(curScale * 100), step = b.dataset.z === '+' ? 10 : -10;
+      Settings.set('zoom', Math.max(50, Math.min(200, Math.round((cur + step) / 10) * 10)));
+    }
+  });
+  window.addEventListener('resize', applyLayout);
+  if (window.ResizeObserver) new ResizeObserver(syncHostHeight).observe(wrap);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(applyLayout);
 
   /* ----- toolbar ----- */
   const swTrack = document.getElementById('swTrack'), stTrack = document.getElementById('stTrack'), chipTrack = document.getElementById('chipTrack');
   const swTimed = document.getElementById('swTimed'), selSecs = document.getElementById('selSecs');
   const swNames = document.getElementById('swNames'), segView = document.getElementById('segView');
+  const swSound = document.getElementById('swSound'), rngVol = document.getElementById('rngVol');
   function syncToolbar() {
     swTrack.checked = Settings.get('track');
     stTrack.textContent = swTrack.checked ? 'සක්‍රීය' : 'අක්‍රීය';
@@ -1354,24 +1790,22 @@ document.addEventListener('DOMContentLoaded', () => {
     swTimed.checked = Settings.get('timed');
     selSecs.value = String(Settings.get('secs')); selSecs.disabled = !swTimed.checked;
     swNames.checked = Settings.get('names');
+    swSound.checked = Settings.get('sound'); rngVol.value = String(Settings.get('vol')); rngVol.disabled = !swSound.checked;
     segView.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.view === Settings.get('view')));
     document.body.classList.toggle('view-fit', Settings.get('view') === 'fit');
   }
-  swTrack.addEventListener('change', () => Settings.set('track', swTrack.checked));
-  swTimed.addEventListener('change', () => Settings.set('timed', swTimed.checked));
+  swTrack.addEventListener('change', () => { Settings.set('track', swTrack.checked); Sound.toggle(swTrack.checked); });
+  swTimed.addEventListener('change', () => { Settings.set('timed', swTimed.checked); Sound.toggle(swTimed.checked); });
+  swSound.addEventListener('change', () => { Settings.set('sound', swSound.checked); Sound.toggle(swSound.checked); });
+  rngVol.addEventListener('input', () => Settings.set('vol', Number(rngVol.value)));
+  rngVol.addEventListener('change', () => Sound.select());
   selSecs.addEventListener('change', () => Settings.set('secs', Number(selSecs.value)));
-  swNames.addEventListener('change', () => Settings.set('names', swNames.checked));
-  segView.addEventListener('click', e => { const b = e.target.closest('button'); if (b) Settings.set('view', b.dataset.view); });
-  Bus.on('settings', syncToolbar);
+  swNames.addEventListener('change', () => { Settings.set('names', swNames.checked); Sound.toggle(swNames.checked); });
+  segView.addEventListener('click', e => { const b = e.target.closest('button'); if (b) { Settings.set('view', b.dataset.view); Sound.select(); } });
+  // browsers only start audio after a user gesture, so prime it on the first click / key press
+  ['pointerdown', 'keydown'].forEach(ev => window.addEventListener(ev, () => Sound.unlock(), { once: true, capture: true }));
+  Bus.on('settings', k => { syncToolbar(); if (k === 'zoom') applyLayout(); });
   syncToolbar();
-
-  // the quiz area always fills the rest of the screen below the header
-  function fitHeights() {
-    const top = panelsRoot.getBoundingClientRect().top + window.scrollY;
-    document.documentElement.style.setProperty('--split-h', Math.max(480, window.innerHeight - top - 16) + 'px');
-  }
-  window.addEventListener('resize', fitHeights);
-  if (window.ResizeObserver) new ResizeObserver(fitHeights).observe(document.getElementById('topbar'));
 
   /* ----- tabs / panels ----- */
   function makeTab(id, label, extraClass) {
@@ -1394,47 +1828,69 @@ document.addEventListener('DOMContentLoaded', () => {
     buildQuizEngine(makePanel(panelId), () => sessionFromCategory(cat));
   });
 
-  /* ----- question generator ----- */
+  /* ----- question generator (with place picker) ----- */
   const genPanelId = 'panel_gen';
   makeTab(genPanelId, 'ප්‍රශ්න උත්පාදකය', 'generator');
   const genPanel = makePanel(genPanelId);
   const setupDiv = document.createElement('div');
-  setupDiv.className = 'panel-box gen-setup';
+  setupDiv.className = 'gen-setup';
   setupDiv.innerHTML =
-    '<p>පසුගිය අවුරුදු 10ක විභාග රටාව අනුව, ප්‍රවර්ග අහඹු ලෙස තෝරාගෙන ප්‍රශ්න උත්පාදනය කරයි. 0.2cm ට වඩා ආසන්න ස්ථාන දෙකක් එකම පරීක්ෂණයේ එකට නොඑයි.</p>' +
-    '<label for="qCount">ප්‍රශ්න ගණන:</label>' +
-    '<input type="number" id="qCount" value="12" min="6" max="24">' +
-    '<div class="gen-btns">' +
-      '<button class="gen-start-btn" id="genStartBtn">පරීක්ෂණය ආරම්භ කරන්න</button>' +
-      '<button class="gen-start-btn weak" id="genWeakBtn" title="ඔබ වැඩිපුර වැරදෙන ස්ථාන වැඩිපුර ඇසේ">දුර්වල ස්ථාන පුහුණුව</button>' +
+    '<div class="panel-box gen-opts">' +
+      '<div class="gen-title">ප්‍රශ්න උත්පාදකය</div>' +
+      '<p>පසුගිය අවුරුදු 10ක විභාග රටාව අනුව, ප්‍රවර්ග අහඹු ලෙස තෝරාගෙන ප්‍රශ්න උත්පාදනය කරයි. 0.2cm ට වඩා ආසන්න ස්ථාන දෙකක් එකම පරීක්ෂණයේ එකට නොඑයි. ' +
+      'ප්‍රශ්න ඇසිය යුතු ස්ථාන (ප්‍රවර්ග සම්පූර්ණයෙන් හෝ එකින් එක) දකුණු පස ලැයිස්තුවෙන් තෝරන්න.</p>' +
+      '<div class="gen-count"><label for="qCount">ප්‍රශ්න ගණන:</label><input type="number" id="qCount" value="12" min="1" max="24"></div>' +
+      '<div class="gen-sel-sum" id="genSelSum"></div>' +
+      '<div class="gen-btns">' +
+        '<button class="gen-start-btn" id="genStartBtn">පරීක්ෂණය ආරම්භ කරන්න</button>' +
+        '<button class="gen-start-btn weak" id="genWeakBtn" title="ඔබ වැඩිපුර වැරදෙන ස්ථාන වැඩිපුර ඇසේ">දුර්වල ස්ථාන පුහුණුව</button>' +
+      '</div>' +
+      '<div class="gen-note" id="genWeakNote"></div>' +
+      '<div class="gen-note" id="genNote"></div>' +
     '</div>' +
-    '<div class="gen-note" id="genWeakNote"></div>' +
-    '<div class="gen-note" id="genNote"></div>';
+    '<div class="gen-pick"></div>';
   genPanel.appendChild(setupDiv);
+  createPickList(setupDiv.querySelector('.gen-pick'));
 
+  const qCount = setupDiv.querySelector('#qCount'), genSelSum = setupDiv.querySelector('#genSelSum');
   const genNote = setupDiv.querySelector('#genNote'), genWeakNote = setupDiv.querySelector('#genWeakNote');
-  const genWeakBtn = setupDiv.querySelector('#genWeakBtn');
-  genNote.textContent = dataCats.length
-    ? 'දැනට ක්‍රියාත්මක ප්‍රවර්ග: ' + dataCats.map(c => c.label).join(', ') + '. ඉතිරි ප්‍රවර්ග ඛණ්ඩාංක ලැබුණු පසු ස්වයංක්‍රීයව එකතු වේ.'
-    : 'තවම කිසිදු ප්‍රවර්ගයක් සඳහා ඛණ්ඩාංක නොමැත. කරුණාකර පළමුව calibrator එක සම්පූර්ණ කරන්න.';
+  const genStartBtn = setupDiv.querySelector('#genStartBtn'), genWeakBtn = setupDiv.querySelector('#genWeakBtn');
 
-  function updateGenWeakState() {
-    const n = Stats.get().weakList.length;
-    genWeakBtn.disabled = !n || !dataCats.length;
-    genWeakNote.textContent = n
-      ? 'දුර්වල ස්ථාන ' + n + ' ක් සටහන් වී ඇත — පුහුණුවේදී ඒවා වැඩිපුර ඇසේ.'
-      : 'දුර්වල ස්ථාන පුහුණුව සඳහා පළමුව “දත්ත සටහන් කිරීම” සක්‍රීය කර ප්‍රශ්න පිළිතුරු දෙන්න.';
+  function updateGenState() {
+    const sel = GenPick.count(), st = Stats.get();
+    genSelSum.innerHTML = 'තෝරාගත් ස්ථාන: <b>' + sel + '</b> / ' + ALL.length;
+    genSelSum.classList.toggle('zero', sel === 0);
+    qCount.max = Math.max(1, Math.min(24, sel));
+    genStartBtn.disabled = !sel || !dataCats.length;
+    const weakSel = st.weakList.filter(s => GenPick.has(s.key)).length;
+    genWeakBtn.disabled = !weakSel;
+    genWeakNote.textContent = weakSel
+      ? 'තෝරාගත් ස්ථාන අතර දුර්වල ස්ථාන ' + weakSel + ' ක් ඇත — පුහුණුවේදී ඒවා වැඩිපුර ඇසේ.'
+      : st.weakList.length
+        ? 'තෝරාගත් ස්ථාන අතර දුර්වල ස්ථාන නැත.'
+        : 'දුර්වල ස්ථාන පුහුණුව සඳහා පළමුව “දත්ත සටහන් කිරීම” සක්‍රීය කර ප්‍රශ්න පිළිතුරු දෙන්න.';
+    const want = parseInt(qCount.value, 10) || 12;
+    genNote.textContent = !sel
+      ? 'අවම වශයෙන් එක් ස්ථානයක්වත් තෝරන්න.'
+      : want > sel ? 'ස්ථාන ' + sel + ' ක් පමණක් තෝරා ඇති නිසා ප්‍රශ්න ' + sel + ' ක් ඇසේ.'
+      : dataCats.length ? 'ක්‍රියාත්මක ප්‍රවර්ග: ' + dataCats.map(c => c.label).join(', ') + '.'
+      : 'තවම කිසිදු ප්‍රවර්ගයක් සඳහා ඛණ්ඩාංක නොමැත. කරුණාකර පළමුව calibrator එක සම්පූර්ණ කරන්න.';
   }
-  Bus.on('tracker', updateGenWeakState);
-  updateGenWeakState();
+  Bus.on('tracker', updateGenState);
+  Bus.on('genpick', updateGenState);
+  qCount.addEventListener('input', updateGenState);
+  updateGenState();
 
   const genQuizHost = document.createElement('div');
+  genQuizHost.className = 'gen-host';
   genQuizHost.style.display = 'none';
   genPanel.appendChild(genQuizHost);
   let genEngine = null;
   function startGen(kind) {
-    if (!dataCats.length) return;
-    const n = Math.max(6, Math.min(24, parseInt(document.getElementById('qCount').value, 10) || 12));
+    const sel = GenPick.count();
+    if (!dataCats.length || !sel) return;
+    const n = Math.max(1, Math.min(24, sel, parseInt(qCount.value, 10) || 12));
+    Sound.start();
     setupDiv.style.display = 'none';
     genQuizHost.style.display = '';
     if (genEngine) genEngine.destroy();
@@ -1443,12 +1899,11 @@ document.addEventListener('DOMContentLoaded', () => {
       onExit() {
         genEngine.destroy(); genEngine = null;
         genQuizHost.innerHTML = ''; genQuizHost.style.display = 'none';
-        setupDiv.style.display = ''; updateGenWeakState();
+        setupDiv.style.display = ''; updateGenState();
       }
     });
-    fitHeights();
   }
-  document.getElementById('genStartBtn').addEventListener('click', () => startGen('normal'));
+  genStartBtn.addEventListener('click', () => startGen('normal'));
   genWeakBtn.addEventListener('click', () => startGen('weak'));
 
   /* ----- analytics ----- */
@@ -1459,14 +1914,15 @@ document.addEventListener('DOMContentLoaded', () => {
   function activate(panelId) {
     tabsRow.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.panel === panelId));
     panelsRoot.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === panelId));
+    appEl.classList.toggle('an', panelId === anPanelId);
     const ab = tabsRow.querySelector('.tab-btn.active');
     if (ab && tabsRow.scrollWidth > tabsRow.clientWidth) tabsRow.scrollTo({ left: ab.offsetLeft - tabsRow.clientWidth / 2 + ab.offsetWidth / 2, behavior: 'smooth' });
-    fitHeights();
-    if (panelId === anPanelId) analytics.refresh();
-    if (panelId === genPanelId) updateGenWeakState();
+    if (panelId === anPanelId) analytics.refresh(true);
+    if (panelId === genPanelId) updateGenState();
   }
-  tabsRow.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => activate(btn.dataset.panel)));
+  tabsRow.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => { if (!btn.classList.contains('active')) Sound.tab(); activate(btn.dataset.panel); }));
 
+  applyLayout();
   if (dataCats.length) {
     activate('panel_' + dataCats[0].id);
   } else {
@@ -1495,8 +1951,6 @@ document.addEventListener('DOMContentLoaded', () => {
     block.appendChild(ul);
     refRoot.appendChild(block);
   });
-
-  fitHeights();
 });
 </script>
 </body>
